@@ -1,0 +1,46 @@
+{
+  "name": "desktop-todo",
+  "version": "0.3.0",
+  "description": "桌面 TODO：计时工作段 → 记录这段做了什么 → 休息，可发送今日记录到 QQ 邮箱",
+  "main": "main/index.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js --dev",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "node scripts/prelaunch.js",
+    "test": "node scripts/smoke-test.js",
+    "dist": "electron-builder --win"
+  },
+  "author": "Desktop TODO",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "nodemailer": "^6.9.14"
+  },
+  "build": {
+    "appId": "com.desktoptodo.app",
+    "productName": "桌面TODO",
+    "directories": {
+      "output": "out"
+    },
+    "files": [
+      "main/**/*",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.ico"
+    },
+    "portable": {
+      "artifactName": "桌面TODO-${version}-便携版.exe"
+    }
+  }
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>桌面 TODO · 挂件</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .widget {
+      width: 170px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border: 1px solid #2A2E36;
+      border-radius: 16px;
+      background: #15171C;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.32);
+      cursor: grab;
+      -webkit-app-region: drag;
+    }
+    .widget:active { cursor: grabbing; }
+    .w-play {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 22px;
+      border-radius: 6px;
+      background: #14B8A6;
+      color: #07110E;
+      font-family: Inter, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+    }
+    .w-track {
+      position: relative;
+      min-width: 0;
+      height: 10px;
+      flex: 1;
+      overflow: hidden;
+      border-radius: 5px;
+      background: #2A2E36;
+    }
+    .w-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: #14B8A6;
+      transition: width 0.25s linear;
+    }
+    .w-time {
+      min-width: 27px;
+      color: #F5F7FA;
+      font-family: 'Inter Tight', Inter, sans-serif;
+      font-size: 9px;
+      font-weight: 600;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      -webkit-app-region: no-drag;
+    }
+    .w-dot {
+      width: 6px;
+      height: 6px;
+      flex: 0 0 6px;
+      border-radius: 50%;
+      background: #7A8290;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget" id="widget">
+    <div class="w-play" id="wPlay" title="开始或暂停">Ⅱ</div>
+    <div class="w-track"><div class="w-fill" id="wFill"></div></div>
+    <div class="w-time" id="wTime">25:00</div>
+    <div class="w-dot" id="wDot"></div>
+  </div>
+  <script src="js/widget.js"></script>
+</body>
+</html>

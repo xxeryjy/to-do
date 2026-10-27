@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+
+# 构建产物（electron-builder 输出到 out/，历史产物在 dist/）
+dist/
+out/
+release/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+
+# 本地工作记录与密钥文件
+.workbuddy/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+.env
+.env.*

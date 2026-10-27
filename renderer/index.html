@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>桌面 TODO</title>
+  <link rel="stylesheet" href="css/candy.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- 专注主屏 -->
+    <section id="view-home" class="view active">
+      <header class="page-header drag-region">
+        <div class="brand-lockup">
+          <div class="brand-mark"><img src="../assets/logo-mark.svg" alt="桌面 TODO" draggable="false" /></div>
+          <div class="page-title-group">
+            <h1>专注</h1>
+            <p>桌面 TODO · 专注计时</p>
+          </div>
+        </div>
+        <div class="header-actions no-drag">
+          <div class="status-pill">
+            <span class="status-dot" id="homeStatusDot"></span>
+            <span id="homeStatusText">空闲</span>
+          </div>
+          <button class="shortcut-chip" id="shortcutHome" type="button" title="开始或暂停计时">Ctrl+K</button>
+          <button class="icon-button" id="btnAddManualHome" type="button" title="添加记录">＋</button>
+          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+        </div>
+      </header>
+
+      <section class="timer-card">
+        <div class="timer-card-head">
+          <span class="eyebrow">专注阶段</span>
+          <span class="phase-pill" id="homePhase">01 / 04</span>
+        </div>
+        <div class="timer-content">
+          <div class="timer-time" id="homeTime">25:00</div>
+          <p class="timer-tagline" id="homeMode">准备开始</p>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="homeProgressFill"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="homeElapsed">00:00</span>
+          <span id="homeTarget">25:00</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric">
+            <b class="metric-value metric-primary" id="homeSessions">0</b>
+            <span class="metric-label">工作段</span>
+          </div>
+          <div class="metric">
+            <b class="metric-value metric-success" id="homeMinutes">0 分</b>
+            <span class="metric-label">专注</span>
+          </div>
+          <div class="metric">
+            <b class="metric-value metric-warning" id="homeStreak">0 天</b>
+            <span class="metric-label">连续</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="preset-group" id="homePresets">
+        <button class="preset-option" type="button" data-preset="25">25 分</button>
+        <button class="preset-option" type="button" data-preset="30">30 分</button>
+        <button class="preset-option" type="button" data-preset="45">45 分</button>
+        <button class="preset-option" type="button" data-preset="60">60 分</button>
+      </div>
+
+      <div class="home-controls">
+        <button class="square-button" id="btnStop" type="button" title="结束当前阶段">结束</button>
+        <button class="primary-button" id="btnStart" type="button">开始专注</button>
+      </div>
+    </section>
+
+    <!-- 专注记录 -->
+    <section id="view-record" class="view record-view">
+      <header class="page-header record-header drag-region">
+        <div class="record-header-left">
+          <button class="icon-button no-drag" id="btnRecClose" type="button" title="返回">←</button>
+          <div class="page-title-group">
+            <h1 id="recTitle">专注记录</h1>
+            <p>记录这段完成的进展。</p>
+          </div>
+        </div>
+        <div class="header-actions no-drag">
+          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+        </div>
+      </header>
+
+      <div class="record-times record-summary">
+        <div class="summary-item">
+          <span>开始</span>
+          <b id="recStart">13:00</b>
+        </div>
+        <div class="summary-item">
+          <span>结束</span>
+          <b id="recEnd">13:25</b>
+        </div>
+        <div class="summary-item">
+          <span>时长</span>
+          <b class="summary-duration" id="recDur">25 分钟</b>
+        </div>
+      </div>
+
+      <div class="manual-form" id="manualForm" style="display:none">
+        <div class="manual-row" id="manualTypeRow">
+          <span class="field-label">记录类型</span>
+          <div class="segmented" id="manualType">
+            <button class="segment-option" type="button" data-mtype="focus">工作段</button>
+            <button class="segment-option" data-mtype="break" type="button">休息段</button>
+          </div>
+        </div>
+        <label class="manual-duration">
+          <span class="field-label">时长（分钟）</span>
+          <input id="manualDuration" type="number" min="1" max="120" value="25" />
+        </label>
+      </div>
+
+      <section class="record-card">
+        <div class="record-card-head">
+          <span class="eyebrow" id="recEyebrow">本段记录</span>
+          <span class="character-count" id="recCount">0 / 500</span>
+        </div>
+        <h2 class="record-question" id="recQuestion">这段时间完成了什么？</h2>
+        <div class="record-input-wrap">
+          <textarea id="recInput" maxlength="500" placeholder="写写这段时间的产出、想法或收获…"></textarea>
+          <span class="auto-save" id="recSavedAt">等待输入</span>
+        </div>
+        <div class="record-tags-wrap">
+          <span class="field-label">标签</span>
+          <div class="record-tags" id="recTags"></div>
+        </div>
+      </section>
+
+      <div class="record-actions">
+        <button class="secondary-button" id="btnGiveup" type="button">放弃</button>
+        <button class="primary-button" id="btnSaveRecord" type="button">保存并开始休息</button>
+      </div>
+    </section>
+
+    <!-- 今日 -->
+    <section id="view-today" class="view today-view">
+      <header class="page-header drag-region">
+        <div class="page-title-group">
+          <h1>今日</h1>
+          <p id="todayDate">2026 年 10 月 27 日 · 星期二</p>
+        </div>
+        <div class="header-actions no-drag">
+          <span class="date-pill" id="todayDatePill">10 月 27 日</span>
+          <button class="icon-button" id="btnAddManualToday" type="button" title="添加记录">＋</button>
+          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+        </div>
+      </header>
+
+      <section class="today-summary-card">
+        <div class="today-focus-total">
+          <span class="eyebrow">今日专注</span>
+          <b id="sumMins">0</b>
+          <span>专注分钟</span>
+        </div>
+        <div class="today-side-stats">
+          <div class="mini-stat">
+            <span>工作段</span>
+            <b class="metric-success" id="sumSegs">0</b>
+          </div>
+          <div class="mini-stat">
+            <span>休息</span>
+            <b class="metric-warning" id="sumBreaks">0</b>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-heading">
+        <h2>最近记录</h2>
+        <button class="text-button" id="btnViewAllToday" type="button">查看全部</button>
+      </div>
+
+      <div class="record-list" id="todayList"></div>
+
+      <div class="mail-card">
+        <div class="mail-icon">@</div>
+        <div class="mail-copy">
+          <b>发送今日汇总</b>
+          <span id="todayMailHint">0 个工作段 · 0 分钟</span>
+        </div>
+        <button class="mail-button" id="btnSendMail" type="button">发送</button>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section id="view-settings" class="view settings-view">
+      <header class="page-header drag-region">
+        <div class="page-title-group">
+          <h1>设置</h1>
+          <p>调整你的专注节奏。</p>
+        </div>
+        <div class="header-actions no-drag">
+          <span class="version-pill">v0.3</span>
+          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+        </div>
+      </header>
+
+      <div class="email-card">
+        <div class="email-summary-row">
+          <div class="mail-icon small">@</div>
+          <div class="email-copy">
+            <b>邮件发送</b>
+            <span id="emailSummary">尚未配置邮箱</span>
+          </div>
+          <button class="text-button" id="btnEditEmail" type="button">编辑</button>
+        </div>
+        <div class="email-editor" id="emailEditor">
+          <label class="field">
+            <span>邮箱地址</span>
+            <input id="setEmail" type="email" placeholder="user@qq.com" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>SMTP 授权码</span>
+            <input id="setAuth" type="password" placeholder="留空则保持原授权码" autocomplete="new-password" />
+          </label>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <h2>计时节奏</h2>
+      </div>
+      <div class="timer-grid" id="steppers"></div>
+
+      <div class="section-heading">
+        <h2>桌面挂件</h2>
+      </div>
+      <div class="setting-card compact-list">
+        <div class="switch-row">
+          <span>显示剩余时间</span>
+          <label class="toggle">
+            <input id="setWidgetTime" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+        <div class="switch-row">
+          <span>显示播放控制</span>
+          <label class="toggle">
+            <input id="setWidgetPlay" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-card auto-mail-card">
+        <div class="switch-row">
+          <span>每日自动发送</span>
+          <label class="toggle">
+            <input id="setAutoMail" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+        <div class="auto-time-row">
+          <label for="setAutoMailTime">发送时间</label>
+          <input id="setAutoMailTime" type="time" value="18:00" />
+        </div>
+        <p class="auto-mail-hint" id="autoMailHint">自动发送已关闭</p>
+      </div>
+
+      <button class="primary-button save-button" id="btnSaveSettings" type="button">保存设置</button>
+    </section>
+
+    <!-- 历史 -->
+    <section id="view-history" class="view history-view">
+      <header class="page-header drag-region">
+        <div class="page-title-group">
+          <h1>历史</h1>
+          <p>每一段专注，都在这里。</p>
+        </div>
+        <div class="header-actions no-drag">
+          <span class="count-pill" id="historyCount">共 0 条</span>
+          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+        </div>
+      </header>
+
+      <div class="search-bar">
+        <span class="search-icon">⌕</span>
+        <input id="histSearch" type="text" placeholder="搜索记录内容或标签" autocomplete="off" />
+        <span class="search-shortcut">/</span>
+      </div>
+
+      <div class="segmented filter-tabs" id="histFilters">
+        <button class="segment-option active" type="button" data-range="today">今天</button>
+        <button class="segment-option" type="button" data-range="yesterday">昨天</button>
+        <button class="segment-option" type="button" data-range="week">本周</button>
+        <button class="segment-option" type="button" data-range="all">全部</button>
+      </div>
+
+      <div class="history-list" id="histList"></div>
+
+      <div class="history-stats">
+        <span id="histCount">0 条记录</span>
+        <b id="histStats">0 分钟专注</b>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" id="navDots" aria-label="主导航"></nav>
+
+    <div class="confirm-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-panel">
+        <span class="eyebrow">请确认</span>
+        <h2 id="confirmTitle">结束当前专注？</h2>
+        <p id="confirmMessage">当前进度不会被保存。</p>
+        <div class="confirm-actions">
+          <button class="secondary-button" id="confirmCancel" type="button">取消</button>
+          <button class="primary-button" id="confirmOk" type="button">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/record.js"></script>
+  <script src="js/views/today.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/views/history.js"></script>
+</body>
+</html>
