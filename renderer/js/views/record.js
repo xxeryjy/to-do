@@ -46,6 +46,7 @@
       draftKey = key
       draft = ''
       selectedTag = null
+      $('recSavedAt').textContent = window.I18n.t('record.autoSave.waiting')
     }
   }
 
@@ -78,12 +79,16 @@
     document.querySelector('.record-times').style.display = 'grid'
 
     const isBreak = mode === 'break'
-    setHeader('专注记录')
-    $('recEyebrow').textContent = '本段记录'
-    $('recQuestion').textContent = isBreak ? '休息的时候做了什么？' : '这段时间完成了什么？'
-    $('recInput').placeholder = isBreak ? '写写休息时的小事…' : '写写这段时间的产出、想法或收获…'
-    $('btnSaveRecord').textContent = isBreak ? '保存并继续' : '保存并开始休息'
-    $('btnGiveup').textContent = '放弃'
+    $('recSubtitle').textContent = window.I18n.t(isBreak ? 'record.subtitle.break' : 'app.recordSubtitle')
+    $('btnGiveup').hidden = true
+    $('btnRecClose').disabled = true
+    document.querySelector('.record-actions').classList.add('single')
+    setHeader(window.I18n.t(isBreak ? 'record.title.break' : 'record.title.focus'))
+    $('recEyebrow').textContent = window.I18n.t('record.eyebrow.current')
+    $('recQuestion').textContent = window.I18n.t(isBreak ? 'record.question.break' : 'record.question.focus')
+    $('recInput').placeholder = window.I18n.t(isBreak ? 'record.placeholder.break' : 'record.placeholder.focus')
+    $('btnSaveRecord').textContent = window.I18n.t(isBreak ? 'record.action.saveNext' : 'record.action.saveBreak')
+    $('btnGiveup').textContent = window.I18n.t('record.action.giveup')
 
     const startedAt = isBreak
       ? (window.lastBreakStartedAt || state.startedAt || Date.now())
@@ -97,7 +102,7 @@
 
     $('recStart').textContent = formatHM(startDate)
     $('recEnd').textContent = formatHM(now)
-    $('recDur').textContent = `${durMin} 分钟`
+    $('recDur').textContent = window.I18n.t('record.minutes', { count: durMin })
 
     renderTags(isBreak ? TAGS_BREAK : TAGS_FOCUS)
     $('recInput').value = draft
@@ -109,13 +114,17 @@
     document.querySelector('.record-times').style.display = 'none'
     $('manualForm').style.display = 'flex'
     $('manualTypeRow').style.display = 'flex'
+    $('recSubtitle').textContent = window.I18n.t('app.recordSubtitle')
+    $('btnGiveup').hidden = false
+    $('btnRecClose').disabled = false
+    document.querySelector('.record-actions').classList.remove('single')
 
-    setHeader('添加记录')
-    $('recEyebrow').textContent = '手动记录'
-    $('recQuestion').textContent = '记录这段完成的内容'
-    $('recInput').placeholder = '写点什么…'
-    $('btnSaveRecord').textContent = '添加记录'
-    $('btnGiveup').textContent = '取消'
+    setHeader(window.I18n.t('record.title.add'))
+    $('recEyebrow').textContent = window.I18n.t('record.eyebrow.manual')
+    $('recQuestion').textContent = window.I18n.t('record.question.manual')
+    $('recInput').placeholder = window.I18n.t('record.placeholder.generic')
+    $('btnSaveRecord').textContent = window.I18n.t('record.action.add')
+    $('btnGiveup').textContent = window.I18n.t('record.action.cancel')
 
     document.querySelectorAll('#manualType .segment-option').forEach((element) => {
       element.classList.toggle('active', element.dataset.mtype === manualType)
@@ -133,13 +142,17 @@
     document.querySelector('.record-times').style.display = 'none'
     $('manualForm').style.display = 'flex'
     $('manualTypeRow').style.display = 'none'
+    $('recSubtitle').textContent = window.I18n.t('app.recordSubtitle')
+    $('btnGiveup').hidden = false
+    $('btnRecClose').disabled = false
+    document.querySelector('.record-actions').classList.remove('single')
 
-    setHeader('编辑记录')
-    $('recEyebrow').textContent = record.type === 'break' ? '休息记录' : '专注记录'
-    $('recQuestion').textContent = '修改这段记录'
-    $('recInput').placeholder = '写点什么…'
-    $('btnSaveRecord').textContent = '保存修改'
-    $('btnGiveup').textContent = '取消'
+    setHeader(window.I18n.t('record.title.edit'))
+    $('recEyebrow').textContent = window.I18n.t(record.type === 'break' ? 'record.eyebrow.break' : 'record.eyebrow.focus')
+    $('recQuestion').textContent = window.I18n.t('record.question.edit')
+    $('recInput').placeholder = window.I18n.t('record.placeholder.generic')
+    $('btnSaveRecord').textContent = window.I18n.t('record.action.saveChanges')
+    $('btnGiveup').textContent = window.I18n.t('record.action.cancel')
 
     $('manualDuration').value = String(record.durationMin || (manualType === 'break' ? 5 : 25))
     if (!draft) draft = record.content || ''
@@ -156,7 +169,7 @@
       const button = document.createElement('button')
       button.type = 'button'
       button.className = `tag-chip ${TAG_CLASS[tag] || ''}`.trim()
-      button.textContent = tag
+      button.textContent = window.I18n.tagLabel(tag)
       button.classList.toggle('selected', selectedTag === tag)
       button.addEventListener('click', () => {
         selectedTag = selectedTag === tag ? null : tag
@@ -169,12 +182,12 @@
   function scheduleDraftSave() {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(() => {
-      $('recSavedAt').textContent = `已于 ${formatHM(new Date())} 自动保存`
+      $('recSavedAt').textContent = window.I18n.t('record.autoSave.saved', { time: formatHM(new Date()) })
     }, 500)
   }
 
   function formatHM(date) {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    return window.I18n.formatTime(date)
   }
 
   function exitRecord() {
@@ -182,12 +195,13 @@
     selectedTag = null
     draftKey = ''
     $('recInput').value = ''
+    $('recSavedAt').textContent = window.I18n.t('record.autoSave.waiting')
     updateCount()
 
     if (window.Store.timer && window.Store.timer.stage === 'recording') {
       window.recordManual = null
       window.recordEdit = null
-      window.App.toast('请先填写未完成的记录')
+      window.App.toast(window.I18n.t('common.recordFirst'))
       window.App.go('record')
       return
     }
@@ -208,7 +222,7 @@
   async function saveRecord() {
     const content = $('recInput').value.trim()
     if (!content) {
-      window.App.toast('写点内容再保存吧')
+      window.App.toast(window.I18n.t('record.toast.empty'))
       $('recInput').focus()
       return
     }
@@ -222,7 +236,7 @@
         content,
         tag: selectedTag
       })
-      window.App.toast('记录已更新')
+      window.App.toast(window.I18n.t('record.toast.updated'))
       exitRecord()
       return
     }
@@ -235,7 +249,7 @@
         content,
         tag: selectedTag
       })
-      window.App.toast('记录已添加')
+      window.App.toast(window.I18n.t('record.toast.added'))
       exitRecord()
       return
     }
@@ -251,7 +265,7 @@
         tag: selectedTag
       })
       window.Store.applyTimerState(result.state)
-      window.App.toast('记录已保存，开始下一段')
+      window.App.toast(window.I18n.t('record.toast.breakSaved'))
     } else {
       const startedAt = window.lastFocusStartedAt || state.startedAt || Date.now()
       const savedDuration = window.lastFocusDurationMin
@@ -263,7 +277,7 @@
         tag: selectedTag
       })
       window.Store.applyTimerState(result.state)
-      window.App.toast('记录已保存，开始休息')
+      window.App.toast(window.I18n.t('record.toast.focusSaved'))
     }
 
     exitRecord()
@@ -271,7 +285,7 @@
 
   function giveup() {
     if (isEdit() || isManual()) {
-      window.App.toast('已取消')
+      window.App.toast(window.I18n.t('record.toast.cancelled'))
       exitRecord()
       return
     }

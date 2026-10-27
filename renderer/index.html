@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-  <title>桌面 TODO</title>
+  <title data-i18n="app.title">Desktop TODO</title>
   <link rel="stylesheet" href="css/candy.css" />
 </head>
 <body>
@@ -12,31 +12,31 @@
     <section id="view-home" class="view active">
       <header class="page-header drag-region">
         <div class="brand-lockup">
-          <div class="brand-mark"><img src="../assets/logo-mark.svg" alt="桌面 TODO" draggable="false" /></div>
+          <div class="brand-mark"><img src="../assets/logo-mark.svg" alt="Desktop TODO" data-i18n-alt="app.title" draggable="false" /></div>
           <div class="page-title-group">
-            <h1>专注</h1>
-            <p>桌面 TODO · 专注计时</p>
+            <h1 data-i18n="home.title">Focus</h1>
+            <p data-i18n="app.homeSubtitle">Desktop TODO · Focus timer</p>
           </div>
         </div>
         <div class="header-actions no-drag">
           <div class="status-pill">
             <span class="status-dot" id="homeStatusDot"></span>
-            <span id="homeStatusText">空闲</span>
+            <span id="homeStatusText">Idle</span>
           </div>
-          <button class="shortcut-chip" id="shortcutHome" type="button" title="开始或暂停计时">Ctrl+K</button>
-          <button class="icon-button" id="btnAddManualHome" type="button" title="添加记录">＋</button>
-          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+          <button class="shortcut-chip" id="shortcutHome" type="button" title="Start or pause timer" data-i18n-title="home.tooltip.toggle">Ctrl+K</button>
+          <button class="icon-button" id="btnAddManualHome" type="button" title="Add record" data-i18n-title="home.tooltip.addRecord" data-i18n-aria-label="common.addRecord">＋</button>
+          <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
         </div>
       </header>
 
       <section class="timer-card">
         <div class="timer-card-head">
-          <span class="eyebrow">专注阶段</span>
+          <span class="eyebrow" data-i18n="home.phase">Focus</span>
           <span class="phase-pill" id="homePhase">01 / 04</span>
         </div>
         <div class="timer-content">
           <div class="timer-time" id="homeTime">25:00</div>
-          <p class="timer-tagline" id="homeMode">准备开始</p>
+          <p class="timer-tagline" id="homeMode">Ready to start</p>
         </div>
         <div class="progress-track">
           <div class="progress-fill" id="homeProgressFill"></div>
@@ -48,17 +48,32 @@
         <div class="metrics-grid">
           <div class="metric">
             <b class="metric-value metric-primary" id="homeSessions">0</b>
-            <span class="metric-label">工作段</span>
+            <span class="metric-label" data-i18n="home.metric.sessions">Sessions</span>
           </div>
           <div class="metric">
-            <b class="metric-value metric-success" id="homeMinutes">0 分</b>
-            <span class="metric-label">专注</span>
+            <b class="metric-value metric-success" id="homeMinutes">0 min</b>
+            <span class="metric-label" data-i18n="home.metric.focus">Focus</span>
           </div>
           <div class="metric">
-            <b class="metric-value metric-warning" id="homeStreak">0 天</b>
-            <span class="metric-label">连续</span>
+            <b class="metric-value metric-warning" id="homeStreak">0 days</b>
+            <span class="metric-label" data-i18n="home.metric.streak">Streak</span>
           </div>
         </div>
+        <section class="fatigue-inline" id="fatiguePanel" hidden>
+          <div class="fatigue-inline-head">
+            <div class="fatigue-icon">☕</div>
+            <div>
+              <span class="eyebrow" id="fatigueEyebrow">Focus complete · 25 min</span>
+              <h3 id="fatigueQuestion" data-i18n="fatigue.question">Are you tired?</h3>
+            </div>
+          </div>
+          <p id="fatigueMessage" data-i18n="fatigue.message">Listen to your body. There is no need to rush into the next round.</p>
+          <div class="fatigue-actions">
+            <button class="primary-button fatigue-button" id="btnFatigueRest" type="button" data-i18n="fatigue.rest">A little tired · take a break</button>
+            <button class="secondary-button fatigue-button" id="btnFatigueContinue" type="button" data-i18n="fatigue.continue">I can keep going</button>
+          </div>
+          <p class="fatigue-hint" id="fatigueHint">Continuing adds 10 min based on Settings.</p>
+        </section>
       </section>
 
       <div class="preset-group" id="homePresets">
@@ -69,8 +84,8 @@
       </div>
 
       <div class="home-controls">
-        <button class="square-button" id="btnStop" type="button" title="结束当前阶段">结束</button>
-        <button class="primary-button" id="btnStart" type="button">开始专注</button>
+        <button class="square-button" id="btnStop" type="button" title="End current phase" data-i18n-title="home.tooltip.endPhase">End</button>
+        <button class="primary-button" id="btnStart" type="button">Start focus</button>
       </div>
     </section>
 
@@ -78,65 +93,65 @@
     <section id="view-record" class="view record-view">
       <header class="page-header record-header drag-region">
         <div class="record-header-left">
-          <button class="icon-button no-drag" id="btnRecClose" type="button" title="返回">←</button>
+          <button class="icon-button no-drag" id="btnRecClose" type="button" title="Back" data-i18n-title="common.back">←</button>
           <div class="page-title-group">
-            <h1 id="recTitle">专注记录</h1>
-            <p>记录这段完成的进展。</p>
+            <h1 id="recTitle">Focus notes</h1>
+            <p id="recSubtitle" data-i18n="app.recordSubtitle">Capture what you completed.</p>
           </div>
         </div>
         <div class="header-actions no-drag">
-          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+          <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
         </div>
       </header>
 
       <div class="record-times record-summary">
         <div class="summary-item">
-          <span>开始</span>
+          <span data-i18n="record.summary.start">Start</span>
           <b id="recStart">13:00</b>
         </div>
         <div class="summary-item">
-          <span>结束</span>
+          <span data-i18n="record.summary.end">End</span>
           <b id="recEnd">13:25</b>
         </div>
         <div class="summary-item">
-          <span>时长</span>
-          <b class="summary-duration" id="recDur">25 分钟</b>
+          <span data-i18n="record.summary.duration">Duration</span>
+          <b class="summary-duration" id="recDur">25 min</b>
         </div>
       </div>
 
       <div class="manual-form" id="manualForm" style="display:none">
         <div class="manual-row" id="manualTypeRow">
-          <span class="field-label">记录类型</span>
+          <span class="field-label" data-i18n="record.type.label">Record type</span>
           <div class="segmented" id="manualType">
-            <button class="segment-option" type="button" data-mtype="focus">工作段</button>
-            <button class="segment-option" data-mtype="break" type="button">休息段</button>
+            <button class="segment-option" type="button" data-mtype="focus" data-i18n="record.type.focus">Work</button>
+            <button class="segment-option" data-mtype="break" type="button" data-i18n="record.type.break">Break</button>
           </div>
         </div>
         <label class="manual-duration">
-          <span class="field-label">时长（分钟）</span>
+          <span class="field-label" data-i18n="record.durationMinutes">Duration (min)</span>
           <input id="manualDuration" type="number" min="1" max="120" value="25" />
         </label>
       </div>
 
       <section class="record-card">
         <div class="record-card-head">
-          <span class="eyebrow" id="recEyebrow">本段记录</span>
+          <span class="eyebrow" id="recEyebrow">Current session</span>
           <span class="character-count" id="recCount">0 / 500</span>
         </div>
-        <h2 class="record-question" id="recQuestion">这段时间完成了什么？</h2>
+        <h2 class="record-question" id="recQuestion">What did you complete during this session?</h2>
         <div class="record-input-wrap">
-          <textarea id="recInput" maxlength="500" placeholder="写写这段时间的产出、想法或收获…"></textarea>
-          <span class="auto-save" id="recSavedAt">等待输入</span>
+          <textarea id="recInput" maxlength="500" placeholder="Note output, ideas, or progress…"></textarea>
+          <span class="auto-save" id="recSavedAt">Waiting for input</span>
         </div>
         <div class="record-tags-wrap">
-          <span class="field-label">标签</span>
+          <span class="field-label" data-i18n="record.tagsLabel">Tags</span>
           <div class="record-tags" id="recTags"></div>
         </div>
       </section>
 
       <div class="record-actions">
-        <button class="secondary-button" id="btnGiveup" type="button">放弃</button>
-        <button class="primary-button" id="btnSaveRecord" type="button">保存并开始休息</button>
+        <button class="secondary-button" id="btnGiveup" type="button">Give up</button>
+        <button class="primary-button" id="btnSaveRecord" type="button">Save and start break</button>
       </div>
     </section>
 
@@ -144,37 +159,37 @@
     <section id="view-today" class="view today-view">
       <header class="page-header drag-region">
         <div class="page-title-group">
-          <h1>今日</h1>
-          <p id="todayDate">2026 年 10 月 27 日 · 星期二</p>
+          <h1 data-i18n="today.title">Today</h1>
+          <p id="todayDate">October 27, 2026</p>
         </div>
         <div class="header-actions no-drag">
-          <span class="date-pill" id="todayDatePill">10 月 27 日</span>
-          <button class="icon-button" id="btnAddManualToday" type="button" title="添加记录">＋</button>
-          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+          <span class="date-pill" id="todayDatePill">Oct 27</span>
+          <button class="icon-button" id="btnAddManualToday" type="button" title="Add record" data-i18n-title="home.tooltip.addRecord" data-i18n-aria-label="common.addRecord">＋</button>
+          <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
         </div>
       </header>
 
       <section class="today-summary-card">
         <div class="today-focus-total">
-          <span class="eyebrow">今日专注</span>
+          <span class="eyebrow" data-i18n="today.focusTotal">Focus today</span>
           <b id="sumMins">0</b>
-          <span>专注分钟</span>
+          <span data-i18n="today.focusMinutes">focus minutes</span>
         </div>
         <div class="today-side-stats">
           <div class="mini-stat">
-            <span>工作段</span>
+            <span data-i18n="today.workBlocks">Work blocks</span>
             <b class="metric-success" id="sumSegs">0</b>
           </div>
           <div class="mini-stat">
-            <span>休息</span>
+            <span data-i18n="today.breaks">Breaks</span>
             <b class="metric-warning" id="sumBreaks">0</b>
           </div>
         </div>
       </section>
 
       <div class="section-heading">
-        <h2>最近记录</h2>
-        <button class="text-button" id="btnViewAllToday" type="button">查看全部</button>
+        <h2 data-i18n="today.recent">Recent records</h2>
+        <button class="text-button" id="btnViewAllToday" type="button" data-i18n="today.viewAll">View all</button>
       </div>
 
       <div class="record-list" id="todayList"></div>
@@ -182,10 +197,10 @@
       <div class="mail-card">
         <div class="mail-icon">@</div>
         <div class="mail-copy">
-          <b>发送今日汇总</b>
-          <span id="todayMailHint">0 个工作段 · 0 分钟</span>
+          <b data-i18n="today.sendSummary">Send today's summary</b>
+          <span id="todayMailHint">0 work blocks · 0 min</span>
         </div>
-        <button class="mail-button" id="btnSendMail" type="button">发送</button>
+        <button class="mail-button" id="btnSendMail" type="button" data-i18n="today.send">Send</button>
       </div>
     </section>
 
@@ -193,12 +208,16 @@
     <section id="view-settings" class="view settings-view">
       <header class="page-header drag-region">
         <div class="page-title-group">
-          <h1>设置</h1>
-          <p>调整你的专注节奏。</p>
+          <h1 data-i18n="settings.title">Settings</h1>
+          <p data-i18n="app.settingsSubtitle">Tune your focus rhythm.</p>
         </div>
         <div class="header-actions no-drag">
-          <span class="version-pill">v0.3</span>
-          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+          <div class="language-switch" id="languageSwitch" role="group" data-i18n-aria-label="settings.language.aria">
+            <button type="button" data-language="zh">中文</button>
+            <button type="button" data-language="en" class="active">English</button>
+          </div>
+          <span class="version-pill" id="versionPill">v0.3</span>
+          <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
         </div>
       </header>
 
@@ -206,41 +225,41 @@
         <div class="email-summary-row">
           <div class="mail-icon small">@</div>
           <div class="email-copy">
-            <b>邮件发送</b>
-            <span id="emailSummary">尚未配置邮箱</span>
+            <b data-i18n="settings.email.title">Email</b>
+            <span id="emailSummary">No email configured</span>
           </div>
-          <button class="text-button" id="btnEditEmail" type="button">编辑</button>
+          <button class="text-button" id="btnEditEmail" type="button">Edit</button>
         </div>
         <div class="email-editor" id="emailEditor">
           <label class="field">
-            <span>邮箱地址</span>
+            <span data-i18n="settings.email.address">Email address</span>
             <input id="setEmail" type="email" placeholder="user@qq.com" autocomplete="off" />
           </label>
           <label class="field">
-            <span>SMTP 授权码</span>
-            <input id="setAuth" type="password" placeholder="留空则保持原授权码" autocomplete="new-password" />
+            <span data-i18n="settings.email.auth">SMTP password</span>
+            <input id="setAuth" type="password" placeholder="Leave blank to keep the current password" data-i18n-placeholder="settings.email.authPlaceholder" autocomplete="new-password" />
           </label>
         </div>
       </div>
 
       <div class="section-heading">
-        <h2>计时节奏</h2>
+        <h2 data-i18n="settings.rhythm">Timer rhythm</h2>
       </div>
       <div class="timer-grid" id="steppers"></div>
 
       <div class="section-heading">
-        <h2>桌面挂件</h2>
+        <h2 data-i18n="settings.widget">Desktop widget</h2>
       </div>
       <div class="setting-card compact-list">
         <div class="switch-row">
-          <span>显示剩余时间</span>
+          <span data-i18n="settings.widget.showTime">Show remaining time</span>
           <label class="toggle">
             <input id="setWidgetTime" type="checkbox" />
             <span></span>
           </label>
         </div>
         <div class="switch-row">
-          <span>显示播放控制</span>
+          <span data-i18n="settings.widget.showControls">Show playback controls</span>
           <label class="toggle">
             <input id="setWidgetPlay" type="checkbox" />
             <span></span>
@@ -250,66 +269,94 @@
 
       <div class="setting-card auto-mail-card">
         <div class="switch-row">
-          <span>每日自动发送</span>
+          <span data-i18n="settings.mail.daily">Daily automatic email</span>
           <label class="toggle">
             <input id="setAutoMail" type="checkbox" />
             <span></span>
           </label>
         </div>
         <div class="auto-time-row">
-          <label for="setAutoMailTime">发送时间</label>
+          <label for="setAutoMailTime" data-i18n="settings.mail.sendTime">Send time</label>
           <input id="setAutoMailTime" type="time" value="18:00" />
         </div>
-        <p class="auto-mail-hint" id="autoMailHint">自动发送已关闭</p>
+        <p class="auto-mail-hint" id="autoMailHint">Automatic email is off</p>
       </div>
 
-      <button class="primary-button save-button" id="btnSaveSettings" type="button">保存设置</button>
+      <div class="setting-card update-card">
+        <div class="update-copy">
+          <b data-i18n="settings.update.title">App updates</b>
+          <span id="updateStatus">Desktop TODO v0.3</span>
+        </div>
+        <button class="text-button" id="btnCheckUpdates" type="button" data-i18n="settings.update.check">Check</button>
+      </div>
+
+      <button class="primary-button save-button" id="btnSaveSettings" type="button">Save settings</button>
     </section>
 
     <!-- 历史 -->
     <section id="view-history" class="view history-view">
       <header class="page-header drag-region">
         <div class="page-title-group">
-          <h1>历史</h1>
-          <p>每一段专注，都在这里。</p>
+          <h1 data-i18n="history.title">History</h1>
+          <p data-i18n="app.historySubtitle">Every focus session lives here.</p>
         </div>
         <div class="header-actions no-drag">
-          <span class="count-pill" id="historyCount">共 0 条</span>
-          <button class="icon-button win-min" type="button" title="最小化" aria-label="最小化">−</button>
+          <span class="count-pill" id="historyCount">Total 0</span>
+          <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
         </div>
       </header>
 
       <div class="search-bar">
         <span class="search-icon">⌕</span>
-        <input id="histSearch" type="text" placeholder="搜索记录内容或标签" autocomplete="off" />
+        <input id="histSearch" type="text" placeholder="Search notes or tags" data-i18n-placeholder="history.search" autocomplete="off" />
         <span class="search-shortcut">/</span>
       </div>
 
       <div class="segmented filter-tabs" id="histFilters">
-        <button class="segment-option active" type="button" data-range="today">今天</button>
-        <button class="segment-option" type="button" data-range="yesterday">昨天</button>
-        <button class="segment-option" type="button" data-range="week">本周</button>
-        <button class="segment-option" type="button" data-range="all">全部</button>
+        <button class="segment-option active" type="button" data-range="today" data-i18n="history.filter.today">Today</button>
+        <button class="segment-option" type="button" data-range="yesterday" data-i18n="history.filter.yesterday">Yesterday</button>
+        <button class="segment-option" type="button" data-range="week" data-i18n="history.filter.week">This week</button>
+        <button class="segment-option" type="button" data-range="all" data-i18n="history.filter.all">All</button>
       </div>
 
       <div class="history-list" id="histList"></div>
 
       <div class="history-stats">
-        <span id="histCount">0 条记录</span>
-        <b id="histStats">0 分钟专注</b>
+        <span id="histCount">0 records</span>
+        <b id="histStats">0 min focused</b>
       </div>
     </section>
 
-    <nav class="bottom-nav" id="navDots" aria-label="主导航"></nav>
+    <nav class="bottom-nav" id="navDots" aria-label="Main navigation" data-i18n-aria-label="nav.aria"></nav>
+
+    <div class="update-overlay" id="updateDialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
+      <div class="update-panel">
+        <span class="eyebrow" data-i18n="update.eyebrow">App update</span>
+        <h2 id="updateTitle" data-i18n="update.title">Update available</h2>
+        <p id="updateMessage">Version 0.4.0 is ready.</p>
+        <div class="update-notes-wrap" id="updateNotesWrap">
+          <span data-i18n="update.notes">What's new</span>
+          <p id="updateNotes"></p>
+        </div>
+        <div class="update-progress" id="updateProgressWrap" hidden>
+          <div class="update-progress-fill" id="updateProgressFill"></div>
+        </div>
+        <p class="update-progress-label" id="updateProgressLabel"></p>
+        <div class="update-actions">
+          <button class="secondary-button" id="btnUpdateLater" type="button" data-i18n="update.later">Later</button>
+          <button class="primary-button" id="btnUpdateNow" type="button" data-i18n="update.install">Download and update</button>
+        </div>
+      </div>
+    </div>
 
     <div class="confirm-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="confirm-panel">
-        <span class="eyebrow">请确认</span>
-        <h2 id="confirmTitle">结束当前专注？</h2>
-        <p id="confirmMessage">当前进度不会被保存。</p>
+        <span class="eyebrow" data-i18n="common.confirmEyebrow">Please confirm</span>
+        <h2 id="confirmTitle">Confirm action</h2>
+        <p id="confirmMessage">This action cannot be undone.</p>
         <div class="confirm-actions">
-          <button class="secondary-button" id="confirmCancel" type="button">取消</button>
-          <button class="primary-button" id="confirmOk" type="button">确认</button>
+          <button class="secondary-button" id="confirmCancel" type="button">Cancel</button>
+          <button class="primary-button" id="confirmOk" type="button">Confirm</button>
         </div>
       </div>
     </div>
@@ -317,6 +364,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
 
+  <script src="js/i18n.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
   <script src="js/views/home.js"></script>

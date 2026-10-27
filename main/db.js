@@ -41,6 +41,8 @@ function init() {
     short_break_min: '5',
     long_break_min: '15',
     long_break_every: '4',
+    delay_focus_min: '10', // 专注结束后主动延长一轮的默认时长
+    language: 'en', // 默认英文，可在设置中切换为中文
     qq_email: '',
     qq_auth_code: '',
     widget_top: '1',
@@ -51,7 +53,7 @@ function init() {
     daily_mail_last_success_date: '',
     daily_mail_last_skip_date: '',
     daily_mail_last_error: '',
-    schema_version: '1'
+    schema_version: '2'
   }
   const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
   for (const [k, v] of Object.entries(defaults)) {

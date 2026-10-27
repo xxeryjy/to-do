@@ -36,6 +36,7 @@
     $('wDot').style.background = dotColor
 
     $('wPlay').textContent = nextState.running && nextState.stage !== 'idle' ? 'Ⅱ' : '▶'
+    $('wPlay').title = window.I18n.t(nextState.running && nextState.stage !== 'idle' ? 'widget.pause' : 'widget.resume')
   }
 
   $('wPlay').addEventListener('click', async (event) => {
@@ -53,10 +54,17 @@
     await window.todo.widgetExpand()
   })
 
+  function applySettings(nextSettings) {
+    window.I18n.setLanguage(nextSettings.language || 'en')
+    window.I18n.translateDocument()
+    document.title = window.I18n.t('app.widgetTitle')
+    settings = nextSettings
+    applyVisibility()
+  }
+
   window.todo.onSettingsChanged(() => {
     window.todo.settingsGet().then((nextSettings) => {
-      settings = nextSettings
-      applyVisibility()
+      applySettings(nextSettings)
     })
   })
 
@@ -67,7 +75,6 @@
 
   window.todo.timerState().then(render)
   window.todo.settingsGet().then((nextSettings) => {
-    settings = nextSettings
-    applyVisibility()
+    applySettings(nextSettings)
   })
 })()

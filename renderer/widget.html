@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
-  <title>桌面 TODO · 挂件</title>
+  <title data-i18n="app.widgetTitle">Desktop TODO · Widget</title>
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -83,11 +83,12 @@
 </head>
 <body>
   <div class="widget" id="widget">
-    <div class="w-play" id="wPlay" title="开始或暂停">Ⅱ</div>
+    <div class="w-play" id="wPlay" title="Start or pause" data-i18n-title="widget.startPause">Ⅱ</div>
     <div class="w-track"><div class="w-fill" id="wFill"></div></div>
     <div class="w-time" id="wTime">25:00</div>
     <div class="w-dot" id="wDot"></div>
   </div>
+  <script src="js/i18n.js"></script>
   <script src="js/widget.js"></script>
 </body>
 </html>

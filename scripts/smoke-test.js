@@ -50,7 +50,7 @@ console.log('[smoke] 2) 计时状态机')
 try {
   const timer = require(path.join(appDir, 'main', 'timer'))
   // 预置设置，避免触发 db；状态机转移不依赖 db
-  timer.settings = { work_min: '25', short_break_min: '5', long_break_min: '15', long_break_every: '3' }
+  timer.settings = { work_min: '25', short_break_min: '5', long_break_min: '15', long_break_every: '3', delay_focus_min: '10' }
   assert(timer.stage === 'idle', '初始应为 idle')
   timer.startFocus()
   assert(timer.stage === 'focus', 'startFocus 后应为 focus')
@@ -61,7 +61,15 @@ try {
   assert(timer.startedAt === guardedStartedAt, '运行中重复开始不得重置开始时间')
   assert(timer.settings.work_min === '25', '运行中预设不得覆盖当前时长')
   timer._onFocusFinished()
-  assert(timer.stage === 'recording' && timer.recordingFor === 'focus', '工作段结束应进入 recording(focus)')
+  assert(timer.stage === 'focus' && timer.awaitingFocusChoice, '工作段到点后应等待休息/延长选择')
+  const beforeExtend = timer.totalMs
+  timer.extendFocus()
+  assert(timer.stage === 'focus' && timer.running && !timer.awaitingFocusChoice, '延长后应继续当前专注')
+  assert(timer.totalMs === beforeExtend + 10 * 60 * 1000, '延长应累加设置中的 10 分钟')
+  timer._onFocusFinished()
+  assert(timer.awaitingFocusChoice, '延长到点后应再次询问')
+  timer.finishFocusForRecording()
+  assert(timer.stage === 'recording' && timer.recordingFor === 'focus', '选择休息后应进入 recording(focus)')
   timer.startBreak()
   assert(timer.stage === 'break', 'startBreak 后应为 break')
   timer._onBreakFinished()
@@ -75,6 +83,23 @@ try {
   timer.phaseInRound = 2
   timer.startNextFocus()
   assert(timer.phaseInRound === 1, 'phaseInRound 应在满 N 段时回绕到 1')
+  timer.totalMs = 25 * 60 * 1000
+  timer.remainMs = 10 * 60 * 1000
+  timer.startedAt = Date.now() - 15 * 60 * 1000
+  let earlyFocusDuration = 0
+  timer.once('focusFinished', (payload) => { earlyFocusDuration = payload.durationMin })
+  timer.endFocusEarlyForRecording()
+  assert(timer.stage === 'recording' && timer.recordingFor === 'focus', '提前结束专注应进入记录页')
+  assert(earlyFocusDuration === 15, '提前结束专注应按实际 15 分钟记录')
+  timer.startBreak()
+  timer.totalMs = 5 * 60 * 1000
+  timer.remainMs = 3 * 60 * 1000
+  timer.breakStartedAt = Date.now() - 2 * 60 * 1000
+  let earlyBreakDuration = 0
+  timer.once('breakFinished', (payload) => { earlyBreakDuration = payload.durationMin })
+  timer.endBreakEarlyForRecording()
+  assert(timer.stage === 'recording' && timer.recordingFor === 'break', '提前结束休息应进入记录页')
+  assert(earlyBreakDuration === 2, '提前结束休息应按实际 2 分钟记录')
   timer._stopTicker()
   ok('状态机转移与轮次回绕正确')
 } catch (e) {
@@ -82,7 +107,7 @@ try {
 }
 
 console.log('[smoke] 3) 主进程模块加载')
-const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'ipc']
+const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'i18n', 'updater', 'ipc']
 for (const m of mainModules) {
   try {
     require(path.join(appDir, 'main', m))
@@ -103,6 +128,26 @@ try {
   ok('日期、时间与到点判断正确')
 } catch (e) {
   fail('自动邮件调度工具', e.message)
+}
+
+console.log('[smoke] 3.55) 更新版本比较')
+try {
+  const { compareVersions, normalizeVersion } = require(path.join(appDir, 'main', 'updater'))
+  assert(normalizeVersion('v0.4.2') === '0.4.2', '版本号应移除 v 前缀')
+  assert(compareVersions('0.4.0', '0.3.0') === 1, '更高版本应被识别')
+  assert(compareVersions('v0.3.0', '0.3.0') === 0, '相同版本应被识别')
+  assert(compareVersions('0.2.9', '0.3.0') === -1, '较低版本应被识别')
+  const updater = require(path.join(appDir, 'main', 'updater'))
+  const assets = [
+    { name: 'DesktopTODO-0.4.0-便携版.exe', browser_download_url: 'https://example.invalid/app.exe' },
+    { name: 'DesktopTODO-0.4.0-便携版.exe.sha256', browser_download_url: 'https://example.invalid/app.sha256' }
+  ]
+  const portable = updater.selectPortableAsset(assets, '0.4.0')
+  assert(portable && portable.name.endsWith('.exe'), '应识别便携 EXE 资产')
+  assert(updater.selectChecksumAsset(assets, portable, '0.4.0'), '应识别 SHA256 资产')
+  ok('语义版本比较正确')
+} catch (e) {
+  fail('更新版本比较', e.message)
 }
 
 console.log('[smoke] 3.6) 自动邮件处理分支')

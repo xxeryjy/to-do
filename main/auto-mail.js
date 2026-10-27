@@ -9,6 +9,7 @@
 const { EventEmitter } = require('events')
 const db = require('./db')
 const mailer = require('./mailer')
+const i18n = require('./i18n')
 
 const CHECK_INTERVAL_MS = 30 * 1000
 const STARTUP_DELAY_MS = 1500
@@ -133,7 +134,8 @@ class AutoMailScheduler extends EventEmitter {
       return
     }
 
-    this.recordError(new Error(result.error || '自动发送失败'), dateKey)
+    const language = this.db.getSetting('language', 'en')
+    this.recordError(new Error(result.error || i18n.t(language, 'mail.autoFailed')), dateKey)
   }
 
   recordError(error, dateKey = formatDateKey(new Date())) {

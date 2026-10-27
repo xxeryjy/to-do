@@ -158,6 +158,37 @@ textarea {
   gap: 6px;
 }
 
+.language-switch {
+  height: 28px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--card);
+  flex: 0 0 auto;
+}
+
+.language-switch button {
+  min-width: 48px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 5px;
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.language-switch button:hover {
+  color: var(--text);
+}
+
+.language-switch button.active {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
 .brand-mark {
   width: 32px;
   height: 32px;
@@ -637,6 +668,14 @@ textarea {
   height: 52px;
 }
 
+.record-actions.single {
+  grid-template-columns: 1fr;
+}
+
+.record-actions [hidden] {
+  display: none !important;
+}
+
 .manual-form {
   display: flex;
   flex-direction: column;
@@ -993,6 +1032,10 @@ textarea {
   border-radius: 10px;
 }
 
+.timer-tile.wide-tile {
+  grid-column: 1 / -1;
+}
+
 .email-card {
   flex: 0 0 auto;
   overflow: hidden;
@@ -1097,28 +1140,33 @@ textarea {
 
 .stepper-actions {
   display: flex;
-  flex: 0 0 auto;
-  gap: 5px;
+  width: 52px;
+  height: 22px;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 52px;
+  padding: 2px;
+  border-radius: 11px;
+  background: var(--panel-2);
 }
 
 .stepper-actions button {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--panel-2);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
   color: var(--text);
   font-family: 'Inter', var(--font-body);
-  font-size: 15px;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .stepper-actions button:hover,
 .stepper-actions button:active {
-  border-color: var(--primary);
   background: var(--primary-soft);
   color: var(--primary-text);
 }
@@ -1217,6 +1265,39 @@ textarea {
   color: var(--text-3);
   font-size: 8px;
   line-height: 1.25;
+}
+
+.update-card {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  flex: 0 0 auto;
+}
+
+.update-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.update-copy b {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.update-copy span {
+  color: var(--text-3);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.update-card .text-button {
+  flex: 0 0 auto;
 }
 
 .save-button {
@@ -1416,6 +1497,193 @@ textarea {
   padding: 24px;
   background: rgba(0, 0, 0, 0.66);
   -webkit-app-region: no-drag;
+}
+
+.update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: rgba(0, 0, 0, 0.72);
+  -webkit-app-region: no-drag;
+}
+
+.update-overlay.show {
+  display: flex;
+}
+
+.update-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.52);
+}
+
+.update-panel h2 {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.update-panel > p {
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.update-notes-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 132px;
+  overflow: hidden;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.update-notes-wrap[hidden],
+.update-progress[hidden] {
+  display: none !important;
+}
+
+.update-notes-wrap > span {
+  color: var(--primary-text);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.update-notes-wrap p {
+  overflow-y: auto;
+  color: var(--text-2);
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+}
+
+.update-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.update-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.update-progress-label {
+  color: var(--text-3) !important;
+  font-size: 9px !important;
+  text-align: center;
+}
+
+.update-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+}
+
+.update-actions button {
+  height: 44px;
+}
+
+.timer-card.awaiting-choice {
+  gap: 10px;
+}
+
+.timer-card.awaiting-choice .metrics-grid {
+  display: none;
+}
+
+.fatigue-inline {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  flex: 0 0 auto;
+}
+
+.fatigue-inline[hidden] {
+  display: none !important;
+}
+
+.fatigue-inline-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fatigue-inline-head > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fatigue-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  border-radius: 50%;
+  background: var(--primary-soft);
+  font-size: 16px;
+}
+
+.fatigue-inline h3 {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#fatigueMessage {
+  color: var(--text-2);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.fatigue-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fatigue-button {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.fatigue-hint {
+  color: var(--text-3);
+  font-size: 9px;
+  text-align: center;
 }
 
 .confirm-overlay.show {

@@ -32,25 +32,25 @@
     yesterdayDate.setDate(yesterdayDate.getDate() - 1)
     const yesterday = localDateKey(yesterdayDate)
     const date = new Date(`${key}T12:00:00`)
-    const short = `${date.getMonth() + 1} 月 ${date.getDate()} 日`
+    const short = window.I18n.formatDate(date, { month: 'short', day: 'numeric' })
 
-    if (key === today) return `今天 · ${short}`
-    if (key === yesterday) return `昨天 · ${short}`
-    return `${date.getFullYear()} 年 ${short}`
+    if (key === today) return window.I18n.t('history.group.today', { date: short })
+    if (key === yesterday) return window.I18n.t('history.group.yesterday', { date: short })
+    return window.I18n.formatDate(date, { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
   async function load() {
     const data = await window.todo.recordSearch(keyword, range)
     const { rows, stats } = data
 
-    $('historyCount').textContent = `共 ${stats.count} 条`
-    $('histCount').textContent = `${stats.count} 条记录`
-    $('histStats').textContent = `${stats.minutes} 分钟专注`
+    $('historyCount').textContent = window.I18n.t('history.count', { count: stats.count })
+    $('histCount').textContent = window.I18n.records(stats.count)
+    $('histStats').textContent = window.I18n.t('history.minutesFocused', { minutes: stats.minutes })
 
     const list = $('histList')
     list.innerHTML = ''
     if (!rows.length) {
-      list.innerHTML = '<div class="empty-state">没有找到匹配的记录</div>'
+      list.innerHTML = `<div class="empty-state">${window.I18n.t('history.empty')}</div>`
       return
     }
 
@@ -66,7 +66,7 @@
       group.className = 'history-group'
       const head = document.createElement('div')
       head.className = 'history-group-head'
-      head.innerHTML = `<b>${groupLabel(dateKey)}</b><span>${items.length} 条</span>`
+      head.innerHTML = `<b>${groupLabel(dateKey)}</b><span>${window.I18n.entries(items.length)}</span>`
       group.appendChild(head)
       for (const item of items) group.appendChild(createRow(item))
       list.appendChild(group)
@@ -76,19 +76,16 @@
   function createRow(session) {
     const item = document.createElement('div')
     item.className = 'history-record'
-    const start = new Date(session.started_at).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    const start = window.I18n.formatTime(new Date(session.started_at))
     const accent = ACCENT_COLOR[session.tag] || '#14B8A6'
     const content = session.content
       ? window.TodayView.escapeHtml(session.content)
-      : (session.type === 'break' ? '（未记录）' : '')
+      : (session.type === 'break' ? window.I18n.t('history.unrecorded') : '')
     const badge = session.type === 'break'
-      ? '<span class="break-pill">休息</span>'
+      ? `<span class="break-pill">${window.I18n.t('history.break')}</span>`
       : ''
     const tag = session.tag
-      ? `<span class="tag-pill ${window.TodayView.tagClass(session.tag)}">${window.TodayView.escapeHtml(session.tag)}</span>`
+      ? `<span class="tag-pill ${window.TodayView.tagClass(session.tag)}">${window.TodayView.escapeHtml(window.I18n.tagLabel(session.tag))}</span>`
       : ''
 
     item.innerHTML = `
@@ -96,7 +93,7 @@
       <span class="record-accent" style="background:${accent};min-height:34px"></span>
       <div class="record-body">
         <p>${content}</p>
-        <div class="record-meta"><span>${session.duration_min} 分钟</span>${badge}${tag}</div>
+        <div class="record-meta"><span>${window.I18n.t('record.minutes', { count: session.duration_min })}</span>${badge}${tag}</div>
       </div>
     `
 

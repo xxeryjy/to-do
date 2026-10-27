@@ -5,13 +5,6 @@
 ;(function () {
   const $ = (id) => document.getElementById(id)
 
-  const STATUS_TEXT = {
-    idle: '空闲',
-    focus: '专注中',
-    break: '休息中',
-    recording: '记录中'
-  }
-
   const STATUS_COLOR = {
     idle: '#7A8290',
     focus: '#14B8A6',
@@ -32,16 +25,18 @@
     if (!state) return
 
     $('homeTime').textContent = state.display
-    $('homeStatusText').textContent = STATUS_TEXT[state.stage] || state.stage
+    const awaitingChoice = !!state.awaitingFocusChoice
+    $('homeStatusText').textContent = window.I18n.t(awaitingChoice ? 'home.status.awaitingChoice' : `home.status.${state.stage}`)
     $('homeStatusDot').style.background = STATUS_COLOR[state.stage] || STATUS_COLOR.idle
 
-    const modeMap = {
-      idle: '准备开始',
-      focus: state.running ? '保持专注' : '已暂停',
-      break: state.isLongBreak ? '长休息中' : '短休息中',
-      recording: '等待填写记录'
-    }
-    $('homeMode').textContent = modeMap[state.stage] || state.stage
+    const modeKey = awaitingChoice
+      ? 'home.mode.awaitingChoice'
+      : state.stage === 'focus'
+      ? (state.running ? 'home.mode.focus' : 'home.mode.focusPaused')
+      : (state.stage === 'break'
+        ? (state.isLongBreak ? 'home.mode.breakLong' : 'home.mode.breakShort')
+        : `home.mode.${state.stage}`)
+    $('homeMode').textContent = window.I18n.t(modeKey)
 
     const every = parseInt(window.Store.settings.long_break_every || 4, 10)
     $('homePhase').textContent = `${String(state.phaseInRound).padStart(2, '0')} / ${String(every).padStart(2, '0')}`
@@ -59,21 +54,24 @@
 
     const recording = state.stage === 'recording'
     const idle = state.stage === 'idle'
-    $('btnStop').disabled = recording || idle
+    $('btnStop').disabled = recording || idle || awaitingChoice
     $('btnAddManualHome').disabled = recording
+    $('btnStart').disabled = awaitingChoice
 
-    if (recording) {
-      $('btnStart').textContent = '去填写记录'
+    if (awaitingChoice) {
+      $('btnStart').textContent = window.I18n.t('home.action.choose')
+    } else if (recording) {
+      $('btnStart').textContent = window.I18n.t('home.action.record')
     } else if (idle) {
-      $('btnStart').textContent = '开始专注'
+      $('btnStart').textContent = window.I18n.t('home.action.start')
     } else if (state.stage === 'break') {
-      $('btnStart').textContent = state.running ? '暂停休息' : '继续休息'
+      $('btnStart').textContent = window.I18n.t(state.running ? 'home.action.pauseBreak' : 'home.action.resumeBreak')
     } else {
-      $('btnStart').textContent = state.running ? '暂停计时' : '继续专注'
+      $('btnStart').textContent = window.I18n.t(state.running ? 'home.action.pause' : 'home.action.resume')
     }
 
-    $('btnStop').textContent = state.stage === 'break' ? '跳过' : '结束'
-    $('btnStop').title = state.stage === 'break' ? '跳过当前休息' : '结束当前专注段'
+    $('btnStop').textContent = window.I18n.t('home.action.end')
+    $('btnStop').title = window.I18n.t(state.stage === 'break' ? 'home.tooltip.endBreak' : 'home.tooltip.endPhase')
 
     const activeMinutes = idle
       ? parseInt(window.Store.settings.work_min || 25, 10)
@@ -81,8 +79,11 @@
     document.querySelectorAll('.preset-option').forEach((button) => {
       const selected = Number(button.dataset.preset) === activeMinutes
       button.classList.toggle('active', selected)
+      button.textContent = window.I18n.t('home.preset', { count: button.dataset.preset })
       button.disabled = !idle
-      button.title = idle ? `选择 ${button.dataset.preset} 分钟` : '结束当前段后可更改时长'
+      button.title = idle
+        ? window.I18n.t('home.preset', { count: button.dataset.preset })
+        : window.I18n.t('home.preset.locked')
     })
 
     if (state.startedAt) lastStartedAt = state.startedAt
@@ -91,8 +92,8 @@
   async function refreshStats() {
     const data = await window.todo.recordGetToday()
     $('homeSessions').textContent = data.stats.segs || 0
-    $('homeMinutes').textContent = `${data.stats.minutes || 0} 分`
-    $('homeStreak').textContent = `${data.stats.streak || 0} 天`
+    $('homeMinutes').textContent = window.I18n.t('home.preset', { count: data.stats.minutes || 0 })
+    $('homeStreak').textContent = window.I18n.days(data.stats.streak || 0)
   }
 
   async function toggleTimer() {
@@ -121,21 +122,24 @@
       if (!state || state.stage === 'idle' || state.stage === 'recording') return
 
       const isBreak = state.stage === 'break'
+      const wasRunning = state.running
       const elapsed = formatDuration(state.totalMs - state.remainMs)
+      if (wasRunning) await window.todo.timerPause()
       const confirmed = await window.App.confirm({
-        title: isBreak ? '跳过当前休息？' : '结束当前专注？',
-        message: isBreak
-          ? `当前休息还剩 ${state.display}，跳过将立即开始下一段专注。`
-          : `当前段已进行 ${elapsed}，结束后不会写入记录。`,
-        confirmText: isBreak ? '跳过休息' : '结束本段',
-        cancelText: isBreak ? '继续休息' : '继续专注'
+        title: window.I18n.t(isBreak ? 'home.confirm.endBreak.title' : 'home.confirm.end.title'),
+        message: window.I18n.t(isBreak ? 'home.confirm.endBreak.message' : 'home.confirm.end.message', { elapsed }),
+        confirmText: window.I18n.t(isBreak ? 'home.confirm.endBreak.confirm' : 'home.confirm.end.confirm'),
+        cancelText: window.I18n.t(isBreak ? 'home.confirm.endBreak.cancel' : 'home.confirm.end.cancel')
       })
-      if (!confirmed) return
+      if (!confirmed) {
+        if (wasRunning) await window.todo.timerResume()
+        return
+      }
 
       if (isBreak) {
-        await window.todo.timerSkipBreak()
+        await window.todo.timerEndBreakEarly()
       } else {
-        await window.todo.timerStop()
+        await window.todo.timerEndFocusEarly()
       }
       refreshStats()
     })
@@ -174,7 +178,10 @@
   })
 
   window.Store.onChange(render)
-  window.App.onView('home', refreshStats)
+  window.App.onView('home', () => {
+    render(window.Store.timer)
+    refreshStats()
+  })
   window.HomeView = { render, refreshStats, toggleTimer }
   bind()
 })()

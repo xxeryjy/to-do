@@ -13,6 +13,7 @@ const { registerIpc } = require('./ipc')
 const timer = require('./timer')
 const db = require('./db')
 const autoMail = require('./auto-mail')
+const i18n = require('./i18n')
 
 // 开发模式（npm run dev）：跳过单实例锁，允许与已运行的便携版共存
 const isDev = process.argv.includes('--dev')
@@ -53,15 +54,23 @@ function minimizeToTray() {
   }
 }
 
+/** 应用更新时真正退出进程，避免被“关闭到托盘”逻辑拦截 */
+function quitForUpdate() {
+  quitting = true
+  app.quit()
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'tray.png'))
+  const language = db.getSetting('language', 'en')
+  const text = (key) => i18n.t(language, key)
   tray = new Tray(icon)
-  tray.setToolTip('桌面 TODO')
+  tray.setToolTip(text('tray.tooltip'))
 
   const menu = Menu.buildFromTemplate([
-    { label: '显示主窗口', click: showMainWindow },
+    { label: text('tray.show'), click: showMainWindow },
     { type: 'separator' },
-    { label: '退出', click: () => {
+    { label: text('tray.quit'), click: () => {
       quitting = true
       app.quit()
     } }
@@ -70,6 +79,14 @@ function createTray() {
 
   // 单击托盘图标 → 显示主窗口
   tray.on('click', showMainWindow)
+}
+
+/** 语言切换后重建托盘菜单，保证主进程界面同步更新 */
+function refreshTrayLanguage() {
+  if (!tray) return
+  tray.destroy()
+  tray = null
+  createTray()
 }
 
 function createMainWindow() {
@@ -180,7 +197,7 @@ function showMainWindow() {
 app.whenReady().then(() => {
   db.init()          // 初始化数据库（建表）
   timer.init()       // 初始化计时器（加载设置里的时长参数）
-  registerIpc({ showMainWindow, minimizeToTray })
+  registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate })
 
   createMainWindow()
   createWidgetWindow()

@@ -29,13 +29,13 @@
 
   function setTodayLabel() {
     const now = new Date()
-    $('todayDate').textContent = now.toLocaleDateString('zh-CN', {
+    $('todayDate').textContent = window.I18n.formatDate(now, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       weekday: 'long'
     })
-    $('todayDatePill').textContent = now.toLocaleDateString('zh-CN', {
+    $('todayDatePill').textContent = window.I18n.formatDate(now, {
       month: 'long',
       day: 'numeric'
     })
@@ -49,12 +49,15 @@
     $('sumSegs').textContent = stats.segs || 0
     $('sumMins').textContent = stats.minutes || 0
     $('sumBreaks').textContent = stats.breaks || 0
-    $('todayMailHint').textContent = `${stats.segs || 0} 个工作段 · ${stats.minutes || 0} 分钟`
+    $('todayMailHint').textContent = window.I18n.t('today.mailHint', {
+      segments: stats.segs || 0,
+      minutes: stats.minutes || 0
+    })
 
     const list = $('todayList')
     list.innerHTML = ''
     if (!sessions.length) {
-      list.innerHTML = '<div class="empty-state">今天还没有专注记录</div>'
+      list.innerHTML = `<div class="empty-state">${window.I18n.t('today.empty')}</div>`
       return
     }
     for (const session of sessions) {
@@ -67,20 +70,17 @@
     item.className = 'record-item'
     item.style.cursor = 'pointer'
 
-    const start = new Date(session.started_at).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    const start = window.I18n.formatTime(new Date(session.started_at))
     const accent = ACCENT_COLOR[session.tag] || '#14B8A6'
     const tag = session.tag
-      ? `<span class="tag-pill ${tagClass(session.tag)}">${escapeHtml(session.tag)}</span>`
+      ? `<span class="tag-pill ${tagClass(session.tag)}">${escapeHtml(window.I18n.tagLabel(session.tag))}</span>`
       : ''
 
     item.innerHTML = `
       <span class="record-accent" style="background:${accent}"></span>
       <div class="record-body">
         <p>${escapeHtml(session.content || '')}</p>
-        <div class="record-meta"><span>${session.duration_min} 分钟</span>${tag}</div>
+        <div class="record-meta"><span>${window.I18n.t('record.minutes', { count: session.duration_min })}</span>${tag}</div>
       </div>
       <span class="record-time">${start}</span>
     `
@@ -120,15 +120,17 @@
     $('btnSendMail').addEventListener('click', async () => {
       const button = $('btnSendMail')
       button.disabled = true
-      button.textContent = '发送中'
+      button.textContent = window.I18n.t('today.sending')
       const result = await window.todo.mailSend()
       button.disabled = false
-      button.textContent = '发送'
+      button.textContent = window.I18n.t('today.send')
 
       if (result.ok) {
-        window.App.toast('邮件已发送')
+        window.App.toast(window.I18n.t('today.toast.sent'))
       } else {
-        window.App.toast(`发送失败：${result.error || '请检查邮箱配置'}`)
+        window.App.toast(window.I18n.t('today.toast.sendFailed', {
+          error: result.error || window.I18n.t('today.error.config')
+        }))
       }
     })
 

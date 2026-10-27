@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('todo', {
   timerPause: () => ipcRenderer.invoke('timer:pause'),
   timerResume: () => ipcRenderer.invoke('timer:resume'),
   timerStop: () => ipcRenderer.invoke('timer:stop'),
+  timerFinishFocus: () => ipcRenderer.invoke('timer:finish-focus'),
+  timerExtendFocus: () => ipcRenderer.invoke('timer:extend-focus'),
+  timerEndFocusEarly: () => ipcRenderer.invoke('timer:end-focus-early'),
+  timerEndBreakEarly: () => ipcRenderer.invoke('timer:end-break-early'),
   timerSkipBreak: () => ipcRenderer.invoke('timer:skip-break'),
   timerState: () => ipcRenderer.invoke('timer:state'),
 
@@ -31,6 +35,10 @@ contextBridge.exposeInMainWorld('todo', {
   mailSend: () => ipcRenderer.invoke('mail:send'),
   mailAutoStatus: () => ipcRenderer.invoke('mail:auto-status'),
 
+  // 应用更新
+  updateCheck: (options) => ipcRenderer.invoke('update:check', options),
+  updateDownloadInstall: () => ipcRenderer.invoke('update:download-install'),
+
   // 窗口
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),
   windowMoveBy: (dx, dy) => ipcRenderer.send('window:move-by', { dx, dy }),
@@ -40,8 +48,10 @@ contextBridge.exposeInMainWorld('todo', {
 
   // 主进程 → 渲染 事件订阅
   onTimerState: (cb) => ipcRenderer.on('timer:state', (_e, state) => cb(state)),
+  onFocusAwaitingChoice: (cb) => ipcRenderer.on('timer:focus-awaiting-choice', (_e, payload) => cb(payload)),
   onFocusFinished: (cb) => ipcRenderer.on('timer:focus-finished', (_e, payload) => cb(payload)),
   onBreakFinished: (cb) => ipcRenderer.on('timer:break-finished', (_e, payload) => cb(payload)),
   onSettingsChanged: (cb) => ipcRenderer.on('settings:changed', (_e, payload) => cb(payload)),
-  onAutoMailStatus: (cb) => ipcRenderer.on('mail:auto-status', (_e, payload) => cb(payload))
+  onAutoMailStatus: (cb) => ipcRenderer.on('mail:auto-status', (_e, payload) => cb(payload)),
+  onUpdateStatus: (cb) => ipcRenderer.on('update:status', (_e, payload) => cb(payload))
 })

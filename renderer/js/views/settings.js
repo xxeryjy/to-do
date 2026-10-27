@@ -6,19 +6,28 @@
   const $ = (id) => document.getElementById(id)
 
   const STEPPERS = [
-    { key: 'work_min', label: '专注时长', min: 1, max: 120, unit: '分钟', tileClass: 'primary-tile' },
-    { key: 'short_break_min', label: '短休息', min: 1, max: 30, unit: '分钟', tileClass: '' },
-    { key: 'long_break_min', label: '长休息', min: 1, max: 60, unit: '分钟', tileClass: 'success-tile' },
-    { key: 'long_break_every', label: '长休频率', min: 1, max: 8, unit: '段', tileClass: 'warning-tile' }
+    { key: 'work_min', labelKey: 'settings.stepper.work', min: 1, max: 120, unitKey: 'settings.unit.minutes', tileClass: 'primary-tile' },
+    { key: 'short_break_min', labelKey: 'settings.stepper.shortBreak', min: 1, max: 30, unitKey: 'settings.unit.minutes', tileClass: '' },
+    { key: 'long_break_min', labelKey: 'settings.stepper.longBreak', min: 1, max: 60, unitKey: 'settings.unit.minutes', tileClass: 'success-tile' },
+    { key: 'long_break_every', labelKey: 'settings.stepper.longBreakEvery', min: 1, max: 8, unitKey: 'settings.unit.rounds', tileClass: 'warning-tile' },
+    { key: 'delay_focus_min', labelKey: 'settings.stepper.delay', min: 1, max: 120, unitKey: 'settings.unit.minutes', tileClass: '', wide: true }
   ]
+
+  function labelOf(stepper) {
+    return window.I18n.t(stepper.labelKey)
+  }
+
+  function unitOf(stepper) {
+    return window.I18n.t(stepper.unitKey)
+  }
 
   function autoHint() {
     const enabled = $('setAutoMail').checked
     const time = $('setAutoMailTime').value || '18:00'
-    if (!enabled) return '自动发送已关闭'
-    const base = `每天 ${time} 自动发送；无记录时跳过，错过后下次启动补发`
+    if (!enabled) return window.I18n.t('settings.mail.off')
+    const base = window.I18n.t('settings.mail.on', { time })
     const lastError = window.Store.settings.daily_mail_last_error
-    return lastError ? `${base} · 上次发送失败` : base
+    return lastError ? `${base} · ${window.I18n.t('settings.mail.failed')}` : base
   }
 
   function refreshAutoHint() {
@@ -31,7 +40,16 @@
 
     $('setEmail').value = email
     $('setAuth').value = ''
-    $('emailSummary').textContent = email ? `${email} · SMTP 已配置` : '尚未配置邮箱'
+    $('emailSummary').textContent = email
+      ? window.I18n.t('settings.email.configured', { email })
+      : window.I18n.t('settings.email.missing')
+    $('btnEditEmail').textContent = window.I18n.t(
+      $('emailEditor').classList.contains('open') ? 'settings.email.collapse' : 'settings.email.edit'
+    )
+
+    document.querySelectorAll('#languageSwitch [data-language]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.language === (settings.language || 'en'))
+    })
 
     $('setWidgetPlay').checked = settings.widget_show_play === '1'
     $('setWidgetTime').checked = settings.widget_show_time === '1'
@@ -43,20 +61,25 @@
     grid.innerHTML = ''
     for (const stepper of STEPPERS) {
       const tile = document.createElement('div')
-      tile.className = `timer-tile ${stepper.tileClass}`.trim()
+      tile.className = `timer-tile ${stepper.tileClass} ${stepper.wide ? 'wide-tile' : ''}`.trim()
       const value = settings[stepper.key] || String(stepper.min)
+      const label = labelOf(stepper)
+      const unit = unitOf(stepper)
       tile.innerHTML = `
-        <span>${stepper.label}</span>
+        <span>${label}</span>
         <div class="timer-control-row">
-          <b data-val="${stepper.key}">${value} ${stepper.unit}</b>
+          <b data-val="${stepper.key}">${value} ${unit}</b>
           <div class="stepper-actions">
-            <button type="button" data-minus="${stepper.key}" aria-label="${stepper.label}减少" title="范围 ${stepper.min}–${stepper.max} ${stepper.unit}">−</button>
-            <button type="button" data-plus="${stepper.key}" aria-label="${stepper.label}增加" title="范围 ${stepper.min}–${stepper.max} ${stepper.unit}">＋</button>
+            <button type="button" data-minus="${stepper.key}" aria-label="${window.I18n.t('settings.stepper.decrease', { label })}" title="${window.I18n.t('settings.stepper.range', { min: stepper.min, max: stepper.max, unit })}">−</button>
+            <button type="button" data-plus="${stepper.key}" aria-label="${window.I18n.t('settings.stepper.increase', { label })}" title="${window.I18n.t('settings.stepper.range', { min: stepper.min, max: stepper.max, unit })}">＋</button>
           </div>
         </div>
       `
       grid.appendChild(tile)
     }
+
+    $('btnSaveSettings').textContent = window.I18n.t('settings.save')
+    if (window.App && window.App.renderUpdateStatus) window.App.renderUpdateStatus()
 
     grid.querySelectorAll('[data-minus]').forEach((button) => {
       button.addEventListener('click', () => step(button.dataset.minus, -1))
@@ -71,14 +94,48 @@
     const current = parseInt(window.Store.settings[key] || stepper.min, 10)
     const next = Math.max(stepper.min, Math.min(stepper.max, current + delta))
     window.Store.settings[key] = String(next)
-    document.querySelector(`[data-val="${key}"]`).textContent = `${next} ${stepper.unit}`
+    document.querySelector(`[data-val="${key}"]`).textContent = `${next} ${unitOf(stepper)}`
   }
 
   function toggleEmailEditor() {
     const editor = $('emailEditor')
     const open = editor.classList.toggle('open')
-    $('btnEditEmail').textContent = open ? '收起' : '编辑'
+    $('btnEditEmail').textContent = window.I18n.t(open ? 'settings.email.collapse' : 'settings.email.edit')
     if (open) $('setEmail').focus()
+  }
+
+  function captureForm() {
+    return {
+      email: $('setEmail').value,
+      auth: $('setAuth').value,
+      emailOpen: $('emailEditor').classList.contains('open'),
+      widgetPlay: $('setWidgetPlay').checked,
+      widgetTime: $('setWidgetTime').checked,
+      autoMail: $('setAutoMail').checked,
+      autoMailTime: $('setAutoMailTime').value
+    }
+  }
+
+  function restoreForm(draft) {
+    $('setEmail').value = draft.email
+    $('setAuth').value = draft.auth
+    $('setWidgetPlay').checked = draft.widgetPlay
+    $('setWidgetTime').checked = draft.widgetTime
+    $('setAutoMail').checked = draft.autoMail
+    $('setAutoMailTime').value = draft.autoMailTime
+    $('emailEditor').classList.toggle('open', draft.emailOpen)
+    $('btnEditEmail').textContent = window.I18n.t(draft.emailOpen ? 'settings.email.collapse' : 'settings.email.edit')
+    refreshAutoHint()
+  }
+
+  async function changeLanguage(language) {
+    if (!language || language === (window.Store.settings.language || 'en')) return
+    const draft = captureForm()
+    await window.todo.settingsSet('language', language)
+    window.Store.settings.language = language
+    window.App.refreshLanguage()
+    render()
+    restoreForm(draft)
   }
 
   async function saveSettings() {
@@ -88,7 +145,7 @@
     const autoTime = $('setAutoMailTime').value
 
     if (autoEnabled && !autoTime) {
-      window.App.toast('请选择自动发送时间')
+      window.App.toast(window.I18n.t('settings.timeRequired'))
       $('setAutoMailTime').focus()
       return
     }
@@ -98,7 +155,8 @@
       widget_show_play: $('setWidgetPlay').checked ? '1' : '0',
       widget_show_time: $('setWidgetTime').checked ? '1' : '0',
       daily_mail_time: autoTime || '18:00',
-      daily_mail_enabled: autoEnabled ? '1' : '0'
+      daily_mail_enabled: autoEnabled ? '1' : '0',
+      language: window.Store.settings.language || 'en'
     }
     if (auth) updates.qq_auth_code = auth
     for (const stepper of STEPPERS) {
@@ -107,19 +165,21 @@
 
     const button = $('btnSaveSettings')
     button.disabled = true
-    button.textContent = '保存中…'
+    button.textContent = window.I18n.t('settings.saving')
 
     try {
       await window.todo.settingsSetMany(updates)
       window.Store.settings = await window.todo.settingsGet()
       $('setAuth').value = ''
       render()
-      window.App.toast('设置已保存')
+      window.App.toast(window.I18n.t('settings.saved'))
     } catch (error) {
-      window.App.toast(`保存失败：${error.message || '请稍后重试'}`)
+      window.App.toast(window.I18n.t('settings.saveFailed', {
+        error: error.message || window.I18n.t('settings.retry')
+      }))
     } finally {
       button.disabled = false
-      button.textContent = '保存设置'
+      button.textContent = window.I18n.t('settings.save')
     }
   }
 
@@ -128,6 +188,15 @@
     $('setAutoMail').addEventListener('change', refreshAutoHint)
     $('setAutoMailTime').addEventListener('input', refreshAutoHint)
     $('btnSaveSettings').addEventListener('click', saveSettings)
+    document.querySelectorAll('#languageSwitch [data-language]').forEach((button) => {
+      button.addEventListener('click', () => {
+        changeLanguage(button.dataset.language).catch((error) => {
+          window.App.toast(window.I18n.t('settings.saveFailed', {
+            error: error.message || window.I18n.t('settings.retry')
+          }))
+        })
+      })
+    })
     window.App.onView('settings', render)
   }
 

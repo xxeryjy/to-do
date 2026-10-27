@@ -8,11 +8,12 @@ const db = require('./db')
 const mailer = require('./mailer')
 const autoMail = require('./auto-mail')
 const secret = require('./secret')
+const updater = require('./updater')
 
 /**
- * @param {{showMainWindow: Function, minimizeToTray: Function}} deps 主进程依赖
+ * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function}} deps 主进程依赖
  */
-function registerIpc({ showMainWindow, minimizeToTray }) {
+function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate }) {
   /* ---------- 计时器 ---------- */
 
   ipcMain.handle('timer:set-duration', (_e, { minutes } = {}) => {
@@ -37,6 +38,26 @@ function registerIpc({ showMainWindow, minimizeToTray }) {
 
   ipcMain.handle('timer:stop', () => {
     timer.stopFocus()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:finish-focus', () => {
+    timer.finishFocusForRecording()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:extend-focus', () => {
+    timer.extendFocus()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:end-focus-early', () => {
+    timer.endFocusEarlyForRecording()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:end-break-early', () => {
+    timer.endBreakEarlyForRecording()
     return timer.snapshot()
   })
 
@@ -133,8 +154,11 @@ function registerIpc({ showMainWindow, minimizeToTray }) {
     db.setSettings(stored)
     const keys = Object.keys(stored)
 
-    if (keys.some((key) => ['work_min', 'short_break_min', 'long_break_min', 'long_break_every'].includes(key))) {
+    if (keys.some((key) => ['work_min', 'short_break_min', 'long_break_min', 'long_break_every', 'delay_focus_min'].includes(key))) {
       timer.refreshSettings()
+    }
+    if (keys.includes('language') && refreshTrayLanguage) {
+      refreshTrayLanguage()
     }
     if (keys.some((key) => ['daily_mail_enabled', 'daily_mail_time'].includes(key))) {
       autoMail.refresh()
@@ -165,6 +189,12 @@ function registerIpc({ showMainWindow, minimizeToTray }) {
   })
 
   ipcMain.handle('mail:auto-status', () => autoMail.getStatus())
+
+  /* ---------- 应用更新 ---------- */
+
+  ipcMain.handle('update:check', (_e, options = {}) => updater.checkForUpdates(options))
+
+  ipcMain.handle('update:download-install', () => updater.downloadAndInstall({ quitForUpdate }))
 
   /* ---------- 窗口 ---------- */
 
@@ -212,6 +242,23 @@ function registerIpc({ showMainWindow, minimizeToTray }) {
     }
   }
   timer.on('state', broadcast)
+  updater.on('status', (payload) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('update:status', payload)
+      }
+    }
+  })
+
+  timer.on('focusAwaitingChoice', (payload) => {
+    // 专注到点后先询问是否休息；主窗口需要可见以显示选择弹窗
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('timer:focus-awaiting-choice', payload)
+      }
+    }
+    showMainWindow()
+  })
 
   timer.on('focusFinished', ({ startedAt }) => {
     // 计时结束：唤起主窗口进入记录填写，挂件收到同一事件

@@ -1,0 +1,53 @@
+name: Release Windows portable
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate tag version
+        shell: pwsh
+        run: |
+          $tagVersion = $env:GITHUB_REF_NAME.TrimStart('v')
+          $packageVersion = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          if ($tagVersion -ne $packageVersion) {
+            throw "Tag version $tagVersion does not match package.json version $packageVersion"
+          }
+
+      - name: Build portable EXE
+        run: npm run dist
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -LiteralPath 'out' -Filter '*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Portable EXE was not built' }
+          $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($exe.Name)" | Set-Content -LiteralPath "$($exe.FullName).sha256" -Encoding ascii
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/*.exe
+            out/*.exe.sha256
+          generate_release_notes: true

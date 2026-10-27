@@ -5,24 +5,26 @@
 const nodemailer = require('nodemailer')
 const db = require('./db')
 const secret = require('./secret')
+const i18n = require('./i18n')
 
 /**
  * 把指定日期的工作记录汇总为纯文本。
  * @param {Array} sessions 工作记录
  * @returns {string} 邮件正文
  */
-function buildDateBody(sessions) {
+function buildDateBody(sessions, language = 'en') {
   const lines = []
+  const locale = i18n.locale(language)
   for (const session of sessions) {
-    const start = new Date(session.started_at).toLocaleTimeString('zh-CN', {
+    const start = new Date(session.started_at).toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     })
-    const end = new Date(session.ended_at).toLocaleTimeString('zh-CN', {
+    const end = new Date(session.ended_at).toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     })
-    const tag = session.tag ? `[${session.tag}] ` : ''
+    const tag = session.tag ? `[${i18n.tag(language, session.tag)}] ` : ''
     lines.push(`- ${start}-${end} ${tag}${session.content || ''}`)
   }
   return lines.join('\n')
@@ -36,9 +38,11 @@ function buildDateBody(sessions) {
 async function sendEmailForDate(dateKey) {
   const email = db.getSetting('qq_email', '')
   const authCode = secret.decrypt(db.getSetting('qq_auth_code', ''))
+  const language = db.getSetting('language', 'en')
+  const text = (key, vars) => i18n.t(language, key, vars)
 
   if (!email || !authCode) {
-    return { ok: false, error: '尚未在设置中填写 QQ 邮箱和授权码' }
+    return { ok: false, error: text('mail.missingConfig') }
   }
 
   const sessions = db.getFocusSessionsByDate(dateKey)
@@ -47,13 +51,22 @@ async function sendEmailForDate(dateKey) {
     return {
       ok: false,
       skipped: true,
-      error: isToday ? '今日还没有任何工作记录' : `${dateKey} 没有工作记录`
+      error: isToday
+        ? text('mail.noToday')
+        : text('mail.noDate', { date: dateKey })
     }
   }
 
   const stats = db.getFocusStatsByDate(dateKey)
-  const dateLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString('zh-CN')
-  const body = `${buildDateBody(sessions)}\n\n总计 ${stats.segs} 个工作段，专注 ${stats.minutes} 分钟。`
+  const dateLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString(i18n.locale(language), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+  const body = `${buildDateBody(sessions, language)}\n\n${text('mail.summary', {
+    segments: stats.segs,
+    minutes: stats.minutes
+  })}`
 
   const transporter = nodemailer.createTransport({
     host: 'smtp.qq.com',
@@ -64,9 +77,9 @@ async function sendEmailForDate(dateKey) {
 
   try {
     await transporter.sendMail({
-      from: `桌面TODO <${email}>`,
+      from: `${language === 'zh' ? '桌面TODO' : 'Desktop TODO'} <${email}>`,
       to: email,
-      subject: `工作记录 ${dateLabel}`,
+      subject: text('mail.subject', { date: dateLabel }),
       text: body
     })
     return { ok: true }
