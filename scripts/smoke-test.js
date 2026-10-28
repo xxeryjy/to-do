@@ -13,6 +13,7 @@
 const { spawnSync } = require('child_process')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
 
 const appDir = path.join(__dirname, '..')
 const electronExe = path.join(appDir, 'node_modules', 'electron', 'dist', 'electron.exe')
@@ -140,11 +141,33 @@ try {
   const updater = require(path.join(appDir, 'main', 'updater'))
   const assets = [
     { name: 'DesktopTODO-0.4.0-便携版.exe', browser_download_url: 'https://example.invalid/app.exe' },
-    { name: 'DesktopTODO-0.4.0-便携版.exe.sha256', browser_download_url: 'https://example.invalid/app.sha256' }
+    { name: 'DesktopTODO-0.4.0-便携版.exe.sha256', browser_download_url: 'https://example.invalid/app.sha256' },
+    { name: 'DesktopTODO-0.3.0-to-0.4.0-portable.patch.zst', browser_download_url: 'https://example.invalid/app.patch.zst' },
+    { name: 'DesktopTODO-0.3.0-to-0.4.0-portable.patch.zst.sha256', browser_download_url: 'https://example.invalid/app.patch.sha256' }
   ]
   const portable = updater.selectPortableAsset(assets, '0.4.0')
   assert(portable && portable.name.endsWith('.exe'), '应识别便携 EXE 资产')
   assert(updater.selectChecksumAsset(assets, portable, '0.4.0'), '应识别 SHA256 资产')
+  const originalCurrentVersion = updater.currentVersion
+  updater.currentVersion = '0.3.0'
+  const patch = updater.selectPatchAsset(assets, '0.4.0')
+  updater.currentVersion = originalCurrentVersion
+  assert(patch && patch.name.endsWith('.patch.zst'), '应识别版本差分补丁')
+
+  const zstd = path.join(appDir, 'assets', 'bin', 'zstd.exe')
+  assert(fs.existsSync(zstd), '应包含 zstd 补丁工具')
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-todo-zstd-'))
+  const oldFile = path.join(tempDir, 'old.bin')
+  const newFile = path.join(tempDir, 'new.bin')
+  const patchFile = path.join(tempDir, 'diff.zst')
+  const outputFile = path.join(tempDir, 'output.bin')
+  fs.writeFileSync(oldFile, Buffer.alloc(100000, 65))
+  fs.writeFileSync(newFile, Buffer.concat([Buffer.alloc(50000, 65), Buffer.from('CHANGED'), Buffer.alloc(50000, 66)]))
+  const compress = spawnSync(zstd, [`--patch-from=${oldFile}`, '-o', patchFile, newFile, '-f', '-q'])
+  const decompress = spawnSync(zstd, ['-d', `--patch-from=${oldFile}`, '-o', outputFile, patchFile, '-f', '-q'])
+  assert(compress.status === 0 && decompress.status === 0, 'zstd 补丁生成或还原失败')
+  assert(fs.readFileSync(outputFile).equals(fs.readFileSync(newFile)), '补丁还原内容不一致')
+  fs.rmSync(tempDir, { recursive: true, force: true })
   ok('语义版本比较正确')
 } catch (e) {
   fail('更新版本比较', e.message)

@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run tests
+        run: npm test
+
       - name: Validate tag version
         shell: pwsh
         run: |
@@ -36,13 +39,45 @@ jobs:
       - name: Build portable EXE
         run: npm run dist
 
-      - name: Generate SHA256 checksum
+      - name: Generate checksums and delta patch
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           $exe = Get-ChildItem -LiteralPath 'out' -Filter '*.exe' | Select-Object -First 1
           if (-not $exe) { throw 'Portable EXE was not built' }
           $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $($exe.Name)" | Set-Content -LiteralPath "$($exe.FullName).sha256" -Encoding ascii
+
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'User-Agent' = 'DesktopTODO-Release'
+          }
+          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases?per_page=10" -Headers $headers
+          $previous = $releases | Where-Object {
+            $_.tag_name -ne $env:GITHUB_REF_NAME -and -not $_.draft -and -not $_.prerelease
+          } | Select-Object -First 1
+
+          if ($previous) {
+            $oldAsset = $previous.assets | Where-Object { $_.name -like '*.exe' } | Select-Object -First 1
+            if ($oldAsset) {
+              $oldVersion = $previous.tag_name.TrimStart('v')
+              $newVersion = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+              $oldPath = Join-Path $env:RUNNER_TEMP 'previous-portable.exe'
+              Invoke-WebRequest -Uri $oldAsset.browser_download_url -OutFile $oldPath -UseBasicParsing
+
+              $zstd = Join-Path (Get-Location) 'assets\bin\zstd.exe'
+              if (-not (Test-Path -LiteralPath $zstd)) { throw 'Bundled zstd executable was not found' }
+
+              $patchName = "DesktopTODO-$oldVersion-to-$newVersion-portable.patch.zst"
+              $patchPath = Join-Path 'out' $patchName
+              & $zstd "--patch-from=$oldPath" --long=27 -19 -o $patchPath $exe.FullName -f -q
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to generate delta patch' }
+              $patchHash = (Get-FileHash -LiteralPath $patchPath -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$patchHash  $patchName" | Set-Content -LiteralPath "$patchPath.sha256" -Encoding ascii
+            }
+          }
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -50,4 +85,6 @@ jobs:
           files: |
             out/*.exe
             out/*.exe.sha256
+            out/*.patch.zst
+            out/*.patch.zst.sha256
           generate_release_notes: true

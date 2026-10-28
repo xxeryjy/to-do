@@ -270,6 +270,7 @@
       })
       document.getElementById('btnUpdateLater').addEventListener('click', () => this.hideUpdateDialog())
       document.getElementById('btnUpdateNow').addEventListener('click', () => this.downloadUpdate())
+      document.getElementById('btnUpdateManual').addEventListener('click', () => window.todo.openReleasePage())
       if (window.todo.onUpdateStatus) {
         window.todo.onUpdateStatus((state) => this.handleUpdateStatus(state))
       }
@@ -323,7 +324,9 @@
       if (state.status === 'downloading') {
         document.getElementById('updateProgressWrap').hidden = false
         document.getElementById('updateProgressFill').style.width = `${state.progress || 0}%`
-        document.getElementById('updateProgressLabel').textContent = window.I18n.t('update.downloading', { percent: state.progress || 0 })
+        document.getElementById('updateProgressLabel').textContent = state.fallback
+          ? window.I18n.t('update.patchFallback')
+          : this.formatDownloadStatus(state)
       } else if (state.status === 'installing') {
         document.getElementById('updateProgressWrap').hidden = false
         document.getElementById('updateProgressFill').style.width = '100%'
@@ -355,8 +358,10 @@
       if (status === 'available') text = window.I18n.t('settings.update.available', { version: state.latestVersion })
       if (status === 'up-to-date') text = window.I18n.t('settings.update.latest')
       if (status === 'no-release') text = window.I18n.t('settings.update.noRelease')
-      if (status === 'error') text = window.I18n.t('settings.update.failed')
-      if (status === 'downloading') text = window.I18n.t('update.downloading', { percent: state.progress || 0 })
+      if (status === 'error') text = state?.updateAvailable
+        ? window.I18n.t('update.failed', { error: this.updateErrorMessage(state.errorCode, state.error) })
+        : window.I18n.t('settings.update.failed')
+      if (status === 'downloading') text = this.formatDownloadStatus(state)
       if (status === 'installing') text = window.I18n.t('update.installing')
       statusElement.textContent = text
       checkButton.disabled = ['checking', 'downloading', 'installing'].includes(status)
@@ -398,7 +403,11 @@
       updateButton.disabled = true
       document.getElementById('updateProgressWrap').hidden = false
       document.getElementById('updateProgressFill').style.width = '0%'
-      document.getElementById('updateProgressLabel').textContent = window.I18n.t('update.downloading', { percent: 0 })
+      document.getElementById('updateProgressLabel').textContent = window.I18n.t('update.preparingDownload')
+      document.getElementById('updateMessage').textContent = window.I18n.t('update.message', {
+        latest: this._updateInfo?.latestVersion || '',
+        current: this._updateInfo?.currentVersion || ''
+      })
       try {
         const result = await window.todo.updateDownloadInstall()
         if (!result || !result.ok) {
@@ -420,6 +429,22 @@
       const key = `update.error.${code || 'UPDATE_FAILED'}`
       const translated = window.I18n.t(key)
       return translated === key ? (fallback || window.I18n.t('update.error.UPDATE_FAILED')) : translated
+    },
+
+    formatBytes(bytes) {
+      const value = Number(bytes) || 0
+      if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`
+      if (value >= 1024) return `${(value / 1024).toFixed(0)} KB`
+      return `${value} B`
+    },
+
+    formatDownloadStatus(state = {}) {
+      return window.I18n.t(state.assetType === 'patch' ? 'update.downloadingPatch' : 'update.downloading', {
+        percent: state.progress || 0,
+        downloaded: this.formatBytes(state.downloadedBytes),
+        total: this.formatBytes(state.totalBytes),
+        speed: this.formatBytes(state.bytesPerSecond)
+      })
     },
 
     go(view) {

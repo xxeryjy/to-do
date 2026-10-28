@@ -2,7 +2,7 @@
  * 桌面 TODO · IPC 层
  * 注册全部渲染进程 → 主进程通道；计时器状态统一广播到所有窗口。
  */
-const { ipcMain, BrowserWindow } = require('electron')
+const { ipcMain, BrowserWindow, shell } = require('electron')
 const timer = require('./timer')
 const db = require('./db')
 const mailer = require('./mailer')
@@ -196,6 +196,8 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
   ipcMain.handle('update:check', (_e, options = {}) => updater.checkForUpdates(options))
 
   ipcMain.handle('update:download-install', () => updater.downloadAndInstall({ quitForUpdate }))
+
+  ipcMain.handle('app:open-release', () => shell.openExternal('https://github.com/xxeryjy/to-do/releases/latest'))
 
   /* ---------- 窗口 ---------- */
 

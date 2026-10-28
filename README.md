@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.1-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,8 +24,8 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [直接下载 v0.4.0 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.4.0/DesktopTODO-0.4.0-portable.exe)
-- [下载 v0.4.0 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.4.0/DesktopTODO-0.4.0-portable.exe.sha256)
+- [直接下载 v0.4.1 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.4.1/DesktopTODO-0.4.1-portable.exe)
+- [下载 v0.4.1 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.4.1/DesktopTODO-0.4.1-portable.exe.sha256)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -66,6 +66,7 @@
 - better-sqlite3
 - nodemailer
 - electron-builder
+- zstd（版本差分补丁）
 
 ## 环境要求
 
@@ -107,7 +108,7 @@ npm run dist
 Windows 便携版输出到：
 
 ```text
-out/DesktopTODO-0.4.0-portable.exe
+out/DesktopTODO-0.4.1-portable.exe
 ```
 
 ## 应用更新
@@ -115,14 +116,18 @@ out/DesktopTODO-0.4.0-portable.exe
 应用启动后会检查公开 GitHub Releases，并在设置页提供手动检查入口。发现新版本后可以下载并更新，流程包括：
 
 - 显示版本号与更新说明
-- 下载便携版 EXE 并显示进度
+- 显示已下载大小、总大小和实时下载速度
+- 优先下载版本差分补丁，补丁不可用时自动回退完整 EXE
 - 校验 SHA256 与 Windows EXE 文件头
 - 关闭旧进程、替换便携版 EXE 并重新启动
 - 更新失败时保留旧版本
+- 下载失败时可直接打开 GitHub Releases 手动下载
 
 自动替换仅支持便携版 EXE。更新包需要通过 SHA256 校验，并建议未来为 Windows EXE 配置代码签名，减少 SmartScreen“未知发布者”提示。
 
 仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建便携版、生成 `.sha256` 文件并创建 GitHub Release。
+
+从 `v0.4.1` 开始，后续版本会优先使用基于 `zstd` 的差分补丁。由于 `v0.3.0` 和 `v0.4.0` 的更新器尚不支持补丁，首次升级到 `v0.4.1` 仍需下载完整 EXE。
 
 ## QQ 邮箱配置
 

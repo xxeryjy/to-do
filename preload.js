@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('todo', {
   // 应用更新
   updateCheck: (options) => ipcRenderer.invoke('update:check', options),
   updateDownloadInstall: () => ipcRenderer.invoke('update:download-install'),
+  openReleasePage: () => ipcRenderer.invoke('app:open-release'),
 
   // 窗口
   windowMinimize: () => ipcRenderer.invoke('window:minimize'),

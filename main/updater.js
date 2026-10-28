@@ -8,7 +8,7 @@ const { EventEmitter } = require('events')
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
-const { spawn } = require('child_process')
+const { spawn, spawnSync } = require('child_process')
 
 const OWNER = 'xxeryjy'
 const REPO = 'to-do'
@@ -113,6 +113,8 @@ class GithubUpdater extends EventEmitter {
       const assets = Array.isArray(release.assets) ? release.assets : []
       const asset = this.selectPortableAsset(assets, latestVersion)
       const checksumAsset = asset ? this.selectChecksumAsset(assets, asset, latestVersion) : null
+      const patchAsset = asset ? this.selectPatchAsset(assets, latestVersion) : null
+      const patchChecksumAsset = patchAsset ? this.selectChecksumAsset(assets, patchAsset, latestVersion) : null
 
       this.info = updateAvailable && asset
         ? {
@@ -121,7 +123,9 @@ class GithubUpdater extends EventEmitter {
             releaseNotes: String(release.body || '').slice(0, 4000),
             publishedAt: release.published_at || '',
             asset,
-            checksumAsset
+            checksumAsset,
+            patchAsset,
+            patchChecksumAsset
           }
         : null
 
@@ -132,13 +136,21 @@ class GithubUpdater extends EventEmitter {
         latestVersion,
         releaseNotes: String(release.body || '').slice(0, 4000),
         assetName: asset?.name || '',
-        hasChecksum: !!(asset?.digest || checksumAsset)
+        hasChecksum: !!(asset?.digest || checksumAsset),
+        hasPatch: !!patchAsset,
+        patchName: patchAsset?.name || '',
+        patchSize: patchAsset?.size || 0
       })
     } catch (error) {
       const aborted = error && error.name === 'AbortError'
+      this.info = null
       return this.emitStatus({
         status: 'error',
         updateAvailable: false,
+        latestVersion: '',
+        releaseNotes: '',
+        assetName: '',
+        hasPatch: false,
         manual,
         errorCode: aborted ? 'TIMEOUT' : 'CHECK_FAILED',
         error: aborted ? 'Request timed out' : (error.message || String(error))
@@ -162,13 +174,18 @@ class GithubUpdater extends EventEmitter {
       || null
   }
 
-  async expectedSha256() {
-    if (!this.info) return ''
-    if (this.info.asset.digest && String(this.info.asset.digest).startsWith('sha256:')) {
-      return String(this.info.asset.digest).slice('sha256:'.length).toLowerCase()
+  selectPatchAsset(assets, latestVersion) {
+    const expectedName = `DesktopTODO-${this.currentVersion}-to-${latestVersion}-portable.patch.zst`.toLowerCase()
+    return assets.find((asset) => String(asset.name || '').toLowerCase() === expectedName) || null
+  }
+
+  async expectedSha256(asset = this.info?.asset, checksumAsset = this.info?.checksumAsset) {
+    if (!asset) return ''
+    if (asset.digest && String(asset.digest).startsWith('sha256:')) {
+      return String(asset.digest).slice('sha256:'.length).toLowerCase()
     }
-    if (!this.info.checksumAsset) return ''
-    const response = await fetchWithTimeout(this.info.checksumAsset.browser_download_url, {
+    if (!checksumAsset) return ''
+    const response = await fetchWithTimeout(checksumAsset.browser_download_url, {
       headers: { Accept: 'application/octet-stream' }
     })
     if (!response.ok) throw new Error(`GitHub ${response.status}`)
@@ -183,7 +200,7 @@ class GithubUpdater extends EventEmitter {
     return ''
   }
 
-  async downloadAndInstall({ quitForUpdate } = {}) {
+  async downloadAndInstall({ quitForUpdate, forceFull = false } = {}) {
     if (!this.info || !this.info.asset) {
       return { ok: false, errorCode: 'NO_UPDATE', error: 'No update is available' }
     }
@@ -195,18 +212,36 @@ class GithubUpdater extends EventEmitter {
       return { ok: false, errorCode: 'PORTABLE_ONLY', error }
     }
 
-    const asset = this.info.asset
-    const downloadPath = path.join(app.getPath('temp'), `DesktopTODO-update-${this.info.latestVersion}.exe`)
+    const usingPatch = !forceFull && !!this.info.patchAsset
+    const asset = usingPatch ? this.info.patchAsset : this.info.asset
+    const checksumAsset = usingPatch ? this.info.patchChecksumAsset : this.info.checksumAsset
+    const downloadPath = usingPatch
+      ? path.join(app.getPath('temp'), `DesktopTODO-update-${this.info.latestVersion}.patch.zst`)
+      : path.join(app.getPath('temp'), `DesktopTODO-update-${this.info.latestVersion}.exe`)
     const partialPath = `${downloadPath}.part`
 
     try {
-      const expectedHash = await this.expectedSha256()
-      if (!expectedHash) throw Object.assign(new Error('Release checksum is missing'), { code: 'MISSING_CHECKSUM' })
+      const fullExpectedHash = await this.expectedSha256(this.info.asset, this.info.checksumAsset)
+      if (!fullExpectedHash) throw Object.assign(new Error('Release checksum is missing'), { code: 'MISSING_CHECKSUM' })
+      const expectedHash = usingPatch
+        ? await this.expectedSha256(asset, checksumAsset)
+        : fullExpectedHash
+      if (!expectedHash) throw Object.assign(new Error('Patch checksum is missing'), { code: 'MISSING_CHECKSUM' })
 
-      this.emitStatus({ status: 'downloading', progress: 0, error: '', errorCode: '' })
+      this.emitStatus({
+        status: 'downloading',
+        progress: 0,
+        downloadedBytes: 0,
+        totalBytes: Number(asset.size) || 0,
+        bytesPerSecond: 0,
+        assetType: usingPatch ? 'patch' : 'full',
+        fallback: false,
+        error: '',
+        errorCode: ''
+      })
       const response = await fetchWithTimeout(asset.browser_download_url, {
         headers: { Accept: 'application/octet-stream' }
-      }, 10 * 60 * 1000)
+      }, 30 * 60 * 1000)
       if (!response.ok) throw new Error(`GitHub ${response.status}`)
 
       const total = Number(response.headers.get('content-length')) || Number(asset.size) || 0
@@ -214,6 +249,8 @@ class GithubUpdater extends EventEmitter {
       const hash = crypto.createHash('sha256')
       let received = 0
       let lastEmit = 0
+      let lastBytes = 0
+      let lastTime = Date.now()
       try {
         for await (const chunk of response.body) {
           await handle.write(chunk)
@@ -222,8 +259,20 @@ class GithubUpdater extends EventEmitter {
           const progress = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0
           const now = Date.now()
           if (now - lastEmit >= 180) {
-            this.emitStatus({ status: 'downloading', progress })
+            const elapsed = Math.max(1, now - lastTime)
+            const bytesPerSecond = Math.round(((received - lastBytes) * 1000) / elapsed)
+            this.emitStatus({
+              status: 'downloading',
+              progress,
+              downloadedBytes: received,
+              totalBytes: total,
+              bytesPerSecond,
+              assetType: usingPatch ? 'patch' : 'full',
+              fallback: false
+            })
             lastEmit = now
+            lastBytes = received
+            lastTime = now
           }
         }
       } finally {
@@ -235,22 +284,44 @@ class GithubUpdater extends EventEmitter {
         throw Object.assign(new Error('Downloaded file checksum does not match'), { code: 'CHECKSUM_MISMATCH' })
       }
 
-      const signature = Buffer.alloc(2)
-      const checkHandle = await fs.promises.open(partialPath, 'r')
-      try {
-        await checkHandle.read(signature, 0, 2, 0)
-      } finally {
-        await checkHandle.close()
+      let installedPath = downloadPath
+      if (usingPatch) {
+        const patchedPath = path.join(app.getPath('temp'), `DesktopTODO-update-${this.info.latestVersion}.exe`)
+        try {
+          this.emitStatus({ status: 'installing', progress: 100, assetType: 'patch' })
+          await fs.promises.rm(patchedPath, { force: true })
+          this.applyPatch(targetExe, partialPath, patchedPath)
+          const patchedHash = await this.sha256File(patchedPath)
+          if (patchedHash !== fullExpectedHash || !(await this.isWindowsExecutable(patchedPath))) {
+            throw Object.assign(new Error('Patched executable failed verification'), { code: 'PATCH_MISMATCH' })
+          }
+          installedPath = patchedPath
+          await fs.promises.rm(partialPath, { force: true })
+        } catch (patchError) {
+          await fs.promises.rm(partialPath, { force: true }).catch(() => {})
+          await fs.promises.rm(patchedPath, { force: true }).catch(() => {})
+          this.emitStatus({
+            status: 'downloading',
+            progress: 0,
+            downloadedBytes: 0,
+            assetType: 'full',
+            fallback: true,
+            error: '',
+            errorCode: ''
+          })
+          await new Promise((resolve) => setTimeout(resolve, 600))
+          return this.downloadAndInstall({ quitForUpdate, forceFull: true })
+        }
+      } else {
+        if (!(await this.isWindowsExecutable(partialPath))) {
+          throw Object.assign(new Error('Downloaded file is not a Windows executable'), { code: 'INVALID_EXE' })
+        }
+        await fs.promises.rm(downloadPath, { force: true })
+        await fs.promises.rename(partialPath, downloadPath)
       }
-      if (signature.toString('ascii') !== 'MZ') {
-        throw Object.assign(new Error('Downloaded file is not a Windows executable'), { code: 'INVALID_EXE' })
-      }
-
-      await fs.promises.rm(downloadPath, { force: true })
-      await fs.promises.rename(partialPath, downloadPath)
       this.emitStatus({ status: 'installing', progress: 100 })
 
-      this.spawnInstallHelper({ targetExe, downloadPath })
+      this.spawnInstallHelper({ targetExe, downloadPath: installedPath })
       if (typeof quitForUpdate === 'function') {
         setTimeout(quitForUpdate, 350)
       }
@@ -260,6 +331,56 @@ class GithubUpdater extends EventEmitter {
       const errorCode = error.code || 'UPDATE_FAILED'
       this.emitStatus({ status: 'error', errorCode, error: error.message || String(error) })
       return { ok: false, errorCode, error: error.message || String(error) }
+    }
+  }
+
+  zstdExecutablePath() {
+    return app.isPackaged
+      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'bin', 'zstd.exe')
+      : path.join(__dirname, '..', 'assets', 'bin', 'zstd.exe')
+  }
+
+  applyPatch(basePath, patchPath, outputPath) {
+    const zstd = this.zstdExecutablePath()
+    if (!fs.existsSync(zstd)) {
+      throw Object.assign(new Error('Bundled zstd patch tool is missing'), { code: 'PATCH_TOOL_MISSING' })
+    }
+    const result = spawnSync(zstd, [
+      '-d',
+      '--patch-from=' + basePath,
+      '--long=27',
+      '-o', outputPath,
+      patchPath,
+      '-f',
+      '-q'
+    ], {
+      windowsHide: true,
+      encoding: 'utf8'
+    })
+    if (result.status !== 0) {
+      const detail = (result.stderr || result.stdout || '').trim()
+      throw Object.assign(new Error(detail || 'Failed to apply update patch'), { code: 'PATCH_FAILED' })
+    }
+  }
+
+  sha256File(filePath) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256')
+      const stream = fs.createReadStream(filePath)
+      stream.on('data', (chunk) => hash.update(chunk))
+      stream.on('error', reject)
+      stream.on('end', () => resolve(hash.digest('hex').toLowerCase()))
+    })
+  }
+
+  async isWindowsExecutable(filePath) {
+    const handle = await fs.promises.open(filePath, 'r')
+    try {
+      const signature = Buffer.alloc(2)
+      await handle.read(signature, 0, 2, 0)
+      return signature.toString('ascii') === 'MZ'
+    } finally {
+      await handle.close()
     }
   }
 

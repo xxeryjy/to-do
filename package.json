@@ -1,6 +1,6 @@
 {
   "name": "desktop-todo",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "桌面 TODO：计时工作段 → 记录这段做了什么 → 休息，可发送今日记录到 QQ 邮箱",
   "main": "main/index.js",
   "scripts": {
@@ -36,7 +36,8 @@
       "package.json"
     ],
     "asarUnpack": [
-      "assets/notification.wav"
+      "assets/notification.wav",
+      "assets/bin/zstd.exe"
     ],
     "win": {
       "target": "portable",
