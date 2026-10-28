@@ -21,6 +21,14 @@
 
 应用以 Windows 桌面常驻工具为使用场景，计时器运行在主进程，主窗口和桌面挂件共享同一计时状态。所有记录和设置保存在本地 SQLite，不依赖账号或云服务。
 
+## 下载
+
+- [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
+- [直接下载 v0.3.0 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.3.0/TODO-0.3.0-.exe)
+- [下载 v0.3.0 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.3.0/TODO-0.3.0-.exe.sha256)
+
+发布包由 GitHub Actions 自动构建并上传。
+
 ## 功能
 
 - 专注、暂停、继续、结束与休息倒计时
