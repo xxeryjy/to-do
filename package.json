@@ -9,7 +9,7 @@
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "node scripts/prelaunch.js",
     "test": "node scripts/smoke-test.js",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win --publish never"
   },
   "author": "Desktop TODO",
   "license": "MIT",
