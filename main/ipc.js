@@ -12,9 +12,9 @@ const updater = require('./updater')
 const notifications = require('./notifications')
 
 /**
- * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function}} deps 主进程依赖
+ * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function, prepareForUpdate: Function}} deps 主进程依赖
  */
-function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate }) {
+function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate }) {
   /* ---------- 计时器 ---------- */
 
   ipcMain.handle('timer:set-duration', (_e, { minutes } = {}) => {
@@ -195,7 +195,7 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
 
   ipcMain.handle('update:check', (_e, options = {}) => updater.checkForUpdates(options))
 
-  ipcMain.handle('update:download-install', () => updater.downloadAndInstall({ quitForUpdate }))
+  ipcMain.handle('update:download-install', () => updater.downloadAndInstall({ quitForUpdate, prepareForUpdate }))
 
   ipcMain.handle('app:open-release', () => shell.openExternal('https://github.com/xxeryjy/to-do/releases/latest'))
 

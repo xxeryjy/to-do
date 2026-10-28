@@ -1,6 +1,6 @@
 {
   "name": "desktop-todo",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "桌面 TODO：计时工作段 → 记录这段做了什么 → 休息，可发送今日记录到 QQ 邮箱",
   "main": "main/index.js",
   "scripts": {
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
+    "electron-updater": "^6.8.11",
     "nodemailer": "^6.9.14"
   },
   "build": {
@@ -40,8 +41,28 @@
       "assets/bin/zstd.exe"
     ],
     "win": {
-      "target": "portable",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "xxeryjy",
+        "repo": "to-do"
+      }
+    ],
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "桌面 TODO",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "DesktopTODO-Setup-${version}.exe"
     },
     "portable": {
       "artifactName": "DesktopTODO-${version}-portable.exe"

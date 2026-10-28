@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.1-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,8 +24,9 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [直接下载 v0.4.1 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.4.1/DesktopTODO-0.4.1-portable.exe)
-- [下载 v0.4.1 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.4.1/DesktopTODO-0.4.1-portable.exe.sha256)
+- [下载 v0.5.0 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-Setup-0.5.0.exe)
+- [下载 v0.5.0 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-0.5.0-portable.exe)
+- [下载 v0.5.0 便携版 SHA256](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-0.5.0-portable.exe.sha256)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -43,7 +44,8 @@
 - 桌面置顶挂件，与主窗口实时同步
 - 最小化或隐藏到托盘时，通过 Windows 系统通知和提示音提醒计时结束
 - 完整中英文界面切换，默认英文
-- 基于 GitHub Releases 的便携版自动更新
+- 基于 GitHub Releases 的安装版差量自动更新
+- 便携版自动更新，支持完整包与 zstd 差分补丁回退
 - 每日定时自动发送邮件
   - 自动发送默认关闭
   - 无记录日期自动跳过
@@ -66,6 +68,7 @@
 - better-sqlite3
 - nodemailer
 - electron-builder
+- electron-updater
 - zstd（版本差分补丁）
 
 ## 环境要求
@@ -105,15 +108,18 @@ npm test
 npm run dist
 ```
 
-Windows 便携版输出到：
+Windows 构建输出：
 
 ```text
-out/DesktopTODO-0.4.1-portable.exe
+out/DesktopTODO-Setup-0.5.0.exe
+out/DesktopTODO-0.5.0-portable.exe
 ```
 
 ## 应用更新
 
-应用启动后会检查公开 GitHub Releases，并在设置页提供手动检查入口。发现新版本后可以下载并更新，流程包括：
+应用启动后会检查公开 GitHub Releases，并在设置页提供手动检查入口。
+
+安装版使用 `electron-updater` 下载 NSIS 差量块，只获取发生变化的安装包数据；便携版优先使用 `zstd` 差分补丁，补丁失败时自动回退完整 EXE。发现新版本后可以下载并更新，流程包括：
 
 - 显示版本号与更新说明
 - 显示已下载大小、总大小和实时下载速度
@@ -125,9 +131,9 @@ out/DesktopTODO-0.4.1-portable.exe
 
 自动替换仅支持便携版 EXE。更新包需要通过 SHA256 校验，并建议未来为 Windows EXE 配置代码签名，减少 SmartScreen“未知发布者”提示。
 
-仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建便携版、生成 `.sha256` 文件并创建 GitHub Release。
+仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建安装版和便携版、生成更新元数据、差分补丁及 `.sha256` 文件，并创建 GitHub Release。
 
-从 `v0.4.1` 开始，后续版本会优先使用基于 `zstd` 的差分补丁。由于 `v0.3.0` 和 `v0.4.0` 的更新器尚不支持补丁，首次升级到 `v0.4.1` 仍需下载完整 EXE。
+由于旧版便携 EXE 无法自动切换到安装版，首次迁移到 `v0.5.0` 需要手动下载一次安装包；之后即可使用小体积差量更新。
 
 ## QQ 邮箱配置
 
@@ -171,7 +177,8 @@ out/DesktopTODO-0.4.1-portable.exe
 - 使用本地 SQLite，不包含账号、云同步或多设备同步。
 - 计时的内存状态不会在应用崩溃后恢复。
 - 自动邮件只在应用运行时发送；错过后会在下次启动补发上一自然日记录。
-- 自动更新仅支持便携版 EXE，且需要公开 GitHub Releases、版本标签和 SHA256 校验文件。
+- 安装版自动更新依赖公开 GitHub Releases、`latest.yml` 和差量块文件；便携版更新依赖版本标签与 SHA256 校验文件。
+- 从旧版便携 EXE 迁移到安装版需要手动安装一次。
 - 当前 EXE 尚未进行代码签名，Windows 可能显示“未知发布者”。
 
 ## 许可证

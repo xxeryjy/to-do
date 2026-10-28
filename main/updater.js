@@ -14,6 +14,14 @@ const OWNER = 'xxeryjy'
 const REPO = 'to-do'
 const RELEASE_API = `https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`
 const USER_AGENT = 'DesktopTODO-Updater'
+let installedAutoUpdater = null
+
+function getInstalledAutoUpdater() {
+  if (!installedAutoUpdater) {
+    installedAutoUpdater = require('electron-updater').autoUpdater
+  }
+  return installedAutoUpdater
+}
 
 function currentAppVersion() {
   return app && typeof app.getVersion === 'function'
@@ -70,6 +78,118 @@ class GithubUpdater extends EventEmitter {
       updateAvailable: false,
       progress: 0
     }
+    if (this.isInstalledBuild()) {
+      const autoUpdater = getInstalledAutoUpdater()
+      autoUpdater.autoDownload = false
+      autoUpdater.autoInstallOnAppQuit = true
+      autoUpdater.allowPrerelease = false
+    }
+  }
+
+  isInstalledBuild() {
+    return !!app && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_FILE
+  }
+
+  async checkInstalledUpdates({ manual = false } = {}) {
+    if (this.checking) return this.snapshot()
+    this.checking = true
+    this.emitStatus({ status: 'checking', manual, error: '', errorCode: '' })
+    try {
+      const autoUpdater = getInstalledAutoUpdater()
+      const result = await autoUpdater.checkForUpdates()
+      const updateInfo = result && result.updateInfo
+      if (!updateInfo) {
+        this.info = null
+        return this.emitStatus({ status: 'no-release', manual, updateAvailable: false })
+      }
+
+      const latestVersion = normalizeVersion(updateInfo.version)
+      const updateAvailable = compareVersions(latestVersion, this.currentVersion) > 0
+      if (!updateAvailable) {
+        this.info = null
+        return this.emitStatus({ status: 'up-to-date', manual, updateAvailable: false, latestVersion })
+      }
+
+      const notes = Array.isArray(updateInfo.releaseNotes)
+        ? updateInfo.releaseNotes.map((item) => item.note || '').join('\n')
+        : String(updateInfo.releaseNotes || '')
+      this.info = {
+        installed: true,
+        latestVersion,
+        releaseNotes: notes,
+        releaseName: updateInfo.releaseName || '',
+        releaseDate: updateInfo.releaseDate || ''
+      }
+      return this.emitStatus({
+        status: 'available',
+        updateAvailable: true,
+        manual,
+        latestVersion,
+        releaseNotes: notes,
+        releaseName: updateInfo.releaseName || '',
+        assetName: 'NSIS installer',
+        assetType: 'installer'
+      })
+    } catch (error) {
+      this.info = null
+      const aborted = error && error.name === 'AbortError'
+      return this.emitStatus({
+        status: 'error',
+        updateAvailable: false,
+        manual,
+        latestVersion: '',
+        errorCode: aborted ? 'TIMEOUT' : 'CHECK_FAILED',
+        error: error && error.message ? error.message : String(error)
+      })
+    } finally {
+      this.checking = false
+    }
+  }
+
+  async downloadInstalledUpdate({ prepareForUpdate } = {}) {
+    if (!this.info || !this.info.installed) {
+      return { ok: false, errorCode: 'NO_UPDATE', error: 'No update is available' }
+    }
+
+    const autoUpdater = getInstalledAutoUpdater()
+    const onProgress = (progress) => {
+      this.emitStatus({
+        status: 'downloading',
+        progress: Math.max(0, Math.min(99, Math.round(progress.percent || 0))),
+        downloadedBytes: progress.transferred || 0,
+        totalBytes: progress.total || 0,
+        bytesPerSecond: progress.bytesPerSecond || 0,
+        assetType: 'installer',
+        fallback: false
+      })
+    }
+
+    autoUpdater.on('download-progress', onProgress)
+    try {
+      this.emitStatus({
+        status: 'downloading',
+        progress: 0,
+        downloadedBytes: 0,
+        totalBytes: 0,
+        bytesPerSecond: 0,
+        assetType: 'installer',
+        fallback: false,
+        error: '',
+        errorCode: ''
+      })
+      await autoUpdater.downloadUpdate()
+      this.emitStatus({ status: 'installing', progress: 100, assetType: 'installer' })
+      if (typeof prepareForUpdate === 'function') prepareForUpdate()
+      setTimeout(() => autoUpdater.quitAndInstall(false, true), 300)
+      return { ok: true }
+    } catch (error) {
+      const errorCode = error && error.code ? error.code : 'UPDATE_FAILED'
+      const message = error && error.message ? error.message : String(error)
+      this.emitStatus({ status: 'error', errorCode, error: message })
+      return { ok: false, errorCode, error: message }
+    } finally {
+      autoUpdater.removeListener('download-progress', onProgress)
+    }
   }
 
   snapshot(extra = {}) {
@@ -88,6 +208,7 @@ class GithubUpdater extends EventEmitter {
   }
 
   async checkForUpdates({ manual = false } = {}) {
+    if (this.isInstalledBuild()) return this.checkInstalledUpdates({ manual })
     if (this.checking) return this.snapshot()
     this.checking = true
     this.emitStatus({ status: 'checking', manual, error: '', errorCode: '' })
@@ -162,8 +283,9 @@ class GithubUpdater extends EventEmitter {
 
   selectPortableAsset(assets, latestVersion) {
     const exeAssets = assets.filter((asset) => /\.exe$/i.test(asset.name || ''))
-    return exeAssets.find((asset) => String(asset.name).includes(latestVersion))
-      || exeAssets.find((asset) => /便携版/i.test(asset.name || ''))
+    const portableAssets = exeAssets.filter((asset) => /portable|便携版/i.test(asset.name || ''))
+    return portableAssets.find((asset) => String(asset.name).includes(latestVersion))
+      || portableAssets[0]
       || null
   }
 
@@ -200,7 +322,8 @@ class GithubUpdater extends EventEmitter {
     return ''
   }
 
-  async downloadAndInstall({ quitForUpdate, forceFull = false } = {}) {
+  async downloadAndInstall({ quitForUpdate, prepareForUpdate, forceFull = false } = {}) {
+    if (this.isInstalledBuild()) return this.downloadInstalledUpdate({ prepareForUpdate })
     if (!this.info || !this.info.asset) {
       return { ok: false, errorCode: 'NO_UPDATE', error: 'No update is available' }
     }

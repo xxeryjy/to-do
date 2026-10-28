@@ -62,6 +62,11 @@ function quitForUpdate() {
   app.quit()
 }
 
+/** 安装版自动更新在内部执行退出流程，这里只解除关闭到托盘的拦截 */
+function prepareForUpdate() {
+  quitting = true
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'tray.png'))
   const language = db.getSetting('language', 'en')
@@ -200,7 +205,7 @@ function showMainWindow() {
 app.whenReady().then(() => {
   db.init()          // 初始化数据库（建表）
   timer.init()       // 初始化计时器（加载设置里的时长参数）
-  registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate })
+  registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate })
 
   createMainWindow()
   createWidgetWindow()

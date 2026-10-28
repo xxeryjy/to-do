@@ -44,10 +44,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          $exe = Get-ChildItem -LiteralPath 'out' -Filter '*.exe' | Select-Object -First 1
+          $exe = Get-ChildItem -LiteralPath 'out' -Filter '*portable.exe' | Select-Object -First 1
           if (-not $exe) { throw 'Portable EXE was not built' }
-          $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $($exe.Name)" | Set-Content -LiteralPath "$($exe.FullName).sha256" -Encoding ascii
+          Get-ChildItem -LiteralPath 'out' -Filter '*.exe' | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content -LiteralPath "$($_.FullName).sha256" -Encoding ascii
+          }
 
           $headers = @{
             Authorization = "Bearer $env:GITHUB_TOKEN"
@@ -60,7 +62,7 @@ jobs:
           } | Select-Object -First 1
 
           if ($previous) {
-            $oldAsset = $previous.assets | Where-Object { $_.name -like '*.exe' } | Select-Object -First 1
+            $oldAsset = $previous.assets | Where-Object { $_.name -like '*portable.exe' } | Select-Object -First 1
             if ($oldAsset) {
               $oldVersion = $previous.tag_name.TrimStart('v')
               $newVersion = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
@@ -85,6 +87,8 @@ jobs:
           files: |
             out/*.exe
             out/*.exe.sha256
+            out/*.blockmap
+            out/latest.yml
             out/*.patch.zst
             out/*.patch.zst.sha256
           generate_release_notes: true
