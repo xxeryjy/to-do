@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.3.0-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,8 +24,8 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [直接下载 v0.3.0 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.3.0/TODO-0.3.0-.exe)
-- [下载 v0.3.0 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.3.0/TODO-0.3.0-.exe.sha256)
+- [直接下载 v0.4.0 便携版 EXE](https://github.com/xxeryjy/to-do/releases/download/v0.4.0/DesktopTODO-0.4.0-portable.exe)
+- [下载 v0.4.0 SHA256 校验文件](https://github.com/xxeryjy/to-do/releases/download/v0.4.0/DesktopTODO-0.4.0-portable.exe.sha256)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -41,6 +41,7 @@
 - 今日数据概览、最近记录和邮件发送
 - 按关键词、日期范围搜索历史记录
 - 桌面置顶挂件，与主窗口实时同步
+- 最小化或隐藏到托盘时，通过 Windows 系统通知和提示音提醒计时结束
 - 完整中英文界面切换，默认英文
 - 基于 GitHub Releases 的便携版自动更新
 - 每日定时自动发送邮件
@@ -106,7 +107,7 @@ npm run dist
 Windows 便携版输出到：
 
 ```text
-out/桌面TODO-0.3.0-便携版.exe
+out/DesktopTODO-0.4.0-portable.exe
 ```
 
 ## 应用更新

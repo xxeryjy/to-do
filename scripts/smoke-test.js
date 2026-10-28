@@ -107,7 +107,7 @@ try {
 }
 
 console.log('[smoke] 3) 主进程模块加载')
-const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'i18n', 'updater', 'ipc']
+const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'i18n', 'updater', 'notifications', 'ipc']
 for (const m of mainModules) {
   try {
     require(path.join(appDir, 'main', m))
@@ -187,6 +187,16 @@ try {
   ok('成功、跳过、失败和防重复逻辑正确')
 } catch (e) {
   fail('自动邮件处理分支', e.message)
+}
+
+console.log('[smoke] 3.7) 提示音资源')
+try {
+  const audio = fs.readFileSync(path.join(appDir, 'assets', 'notification.wav'))
+  assert(audio.subarray(0, 4).toString('ascii') === 'RIFF', '提示音应为 WAV 文件')
+  assert(audio.subarray(8, 12).toString('ascii') === 'WAVE', '提示音格式头错误')
+  ok('通知提示音资源有效')
+} catch (e) {
+  fail('提示音资源', e.message)
 }
 
 console.log('[smoke] 4) 渲染层脚本语法校验')

@@ -126,6 +126,18 @@
       if (window.todo.onFocusAwaitingChoice) {
         window.todo.onFocusAwaitingChoice((payload) => this.showFatiguePrompt(payload))
       }
+      if (window.todo.onTimerNotificationSound) {
+        window.todo.onTimerNotificationSound(() => this.playNotificationSound())
+      }
+    },
+
+    playNotificationSound() {
+      if (!this._notificationAudio) {
+        this._notificationAudio = new Audio('../assets/notification.wav')
+        this._notificationAudio.volume = 0.55
+      }
+      this._notificationAudio.currentTime = 0
+      this._notificationAudio.play().catch(() => {})
     },
 
     showFatiguePrompt(payload = {}) {

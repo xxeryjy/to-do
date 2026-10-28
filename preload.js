@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('todo', {
 
   // 主进程 → 渲染 事件订阅
   onTimerState: (cb) => ipcRenderer.on('timer:state', (_e, state) => cb(state)),
+  onTimerNotificationSound: (cb) => ipcRenderer.on('timer:notification-sound', () => cb()),
   onFocusAwaitingChoice: (cb) => ipcRenderer.on('timer:focus-awaiting-choice', (_e, payload) => cb(payload)),
   onFocusFinished: (cb) => ipcRenderer.on('timer:focus-finished', (_e, payload) => cb(payload)),
   onBreakFinished: (cb) => ipcRenderer.on('timer:break-finished', (_e, payload) => cb(payload)),

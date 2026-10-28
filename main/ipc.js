@@ -9,6 +9,7 @@ const mailer = require('./mailer')
 const autoMail = require('./auto-mail')
 const secret = require('./secret')
 const updater = require('./updater')
+const notifications = require('./notifications')
 
 /**
  * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function}} deps 主进程依赖
@@ -241,6 +242,17 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
       }
     }
   }
+
+  const notifyTimerCompletion = (kind) => {
+    // 主渲染进程播放自定义提示音，用户点击系统通知后再恢复窗口
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('timer:notification-sound')
+      }
+    }
+    notifications.showTimerNotification(kind, { onClick: showMainWindow })
+  }
+
   timer.on('state', broadcast)
   updater.on('status', (payload) => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -251,13 +263,13 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
   })
 
   timer.on('focusAwaitingChoice', (payload) => {
-    // 专注到点后先询问是否休息；主窗口需要可见以显示选择弹窗
+    // 专注到点后保持当前窗口状态，通过系统通知和提示音提醒
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send('timer:focus-awaiting-choice', payload)
       }
     }
-    showMainWindow()
+    notifyTimerCompletion('focus')
   })
 
   timer.on('focusFinished', ({ startedAt }) => {
@@ -277,6 +289,7 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
         win.webContents.send('timer:break-finished', payload)
       }
     }
+    notifyTimerCompletion('break')
   })
 
   autoMail.on('status', (payload) => {

@@ -7,6 +7,8 @@ const path = require('path')
 
 // 无 GPU / 远程桌面环境下禁用硬件加速，避免 GPU 进程崩溃导致启动失败
 app.disableHardwareAcceleration()
+// 允许隐藏窗口播放计时结束提示音
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.setAppUserModelId('com.desktoptodo.app')
 
 const { registerIpc } = require('./ipc')
@@ -189,6 +191,7 @@ function showMainWindow() {
   if (!mainWin) {
     createMainWindow()
   } else {
+    if (mainWin.isMinimized()) mainWin.restore()
     mainWin.show()
     mainWin.focus()
   }
