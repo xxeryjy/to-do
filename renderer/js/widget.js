@@ -27,21 +27,25 @@
       $('wFill').style.width = '0%'
     }
 
-    const dotColor = {
-      idle: '#7A8290',
-      focus: '#14B8A6',
-      break: '#34D399',
-      recording: '#5EEAD4'
-    }[nextState.stage] || '#7A8290'
+    const theme = document.documentElement.dataset.theme || 'dark'
+    const accent = theme === 'candy' ? '#FF6FAE' : theme === 'light' ? '#5F8A70' : '#14B8A6'
+    const dotColor = nextState.stage === 'idle' ? '#7A8290' : accent
     $('wDot').style.background = dotColor
 
-    $('wPlay').textContent = nextState.running && nextState.stage !== 'idle' ? 'Ⅱ' : '▶'
-    $('wPlay').title = window.I18n.t(nextState.running && nextState.stage !== 'idle' ? 'widget.pause' : 'widget.resume')
+    const awaitingChoice = nextState.awaitingFocusChoice || nextState.awaitingBreakChoice
+    $('wPlay').textContent = awaitingChoice ? '!' : nextState.running && nextState.stage !== 'idle' ? 'Ⅱ' : '▶'
+    $('wPlay').title = awaitingChoice
+      ? window.I18n.t('widget.openChoice')
+      : window.I18n.t(nextState.running && nextState.stage !== 'idle' ? 'widget.pause' : 'widget.resume')
   }
 
   $('wPlay').addEventListener('click', async (event) => {
     event.stopPropagation()
     const current = state || await window.todo.timerState()
+    if (current.awaitingFocusChoice || current.awaitingBreakChoice) {
+      await window.todo.widgetExpand()
+      return
+    }
     if (current.stage === 'recording') return
     if (current.running && current.stage !== 'idle') {
       await window.todo.timerPause()
@@ -57,6 +61,9 @@
   function applySettings(nextSettings) {
     window.I18n.setLanguage(nextSettings.language || 'en')
     window.I18n.translateDocument()
+    document.documentElement.dataset.theme = ['candy', 'light'].includes(nextSettings.ui_style)
+      ? nextSettings.ui_style
+      : 'dark'
     document.title = window.I18n.t('app.widgetTitle')
     settings = nextSettings
     applyVisibility()

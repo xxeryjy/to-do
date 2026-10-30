@@ -5,6 +5,9 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
   <title data-i18n="app.title">Desktop TODO</title>
   <link rel="stylesheet" href="css/candy.css" />
+  <link rel="stylesheet" href="css/themes.css" />
+  <link rel="stylesheet" href="css/theme-candy.css" />
+  <link rel="stylesheet" href="css/theme-light.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -26,12 +29,13 @@
           <button class="shortcut-chip" id="shortcutHome" type="button" title="Start or pause timer" data-i18n-title="home.tooltip.toggle">Ctrl+K</button>
           <button class="icon-button" id="btnAddManualHome" type="button" title="Add record" data-i18n-title="home.tooltip.addRecord" data-i18n-aria-label="common.addRecord">＋</button>
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
+          <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
 
       <section class="timer-card">
         <div class="timer-card-head">
-          <span class="eyebrow" data-i18n="home.phase">Focus</span>
+          <span class="eyebrow" id="homePhaseLabel" data-i18n="home.phase">Focus</span>
           <span class="phase-pill" id="homePhase">01 / 04</span>
         </div>
         <div class="timer-content">
@@ -74,6 +78,21 @@
           </div>
           <p class="fatigue-hint" id="fatigueHint">Continuing adds 10 min based on Settings.</p>
         </section>
+        <section class="fatigue-inline break-extend-panel" id="breakExtendPanel" hidden>
+          <div class="fatigue-inline-head">
+            <div class="fatigue-icon">◌</div>
+            <div>
+              <span class="eyebrow" id="breakExtendEyebrow">Break complete · 5 min</span>
+              <h3 id="breakExtendQuestion" data-i18n="breakExtend.question">Rest a little longer?</h3>
+            </div>
+          </div>
+          <p id="breakExtendMessage" data-i18n="breakExtend.message">Extend this break, or finish and record it now.</p>
+          <div class="fatigue-actions">
+            <button class="primary-button fatigue-button" id="btnBreakExtend" type="button">Rest 5 more min</button>
+            <button class="secondary-button fatigue-button" id="btnBreakFinish" type="button" data-i18n="breakExtend.finish">Finish and record</button>
+          </div>
+          <p class="fatigue-hint" id="breakExtendHint">Extra time is merged into this break.</p>
+        </section>
       </section>
 
       <div class="preset-group" id="homePresets">
@@ -101,6 +120,7 @@
         </div>
         <div class="header-actions no-drag">
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
+          <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
 
@@ -166,6 +186,7 @@
           <span class="date-pill" id="todayDatePill">Oct 27</span>
           <button class="icon-button" id="btnAddManualToday" type="button" title="Add record" data-i18n-title="home.tooltip.addRecord" data-i18n-aria-label="common.addRecord">＋</button>
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
+          <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
 
@@ -218,6 +239,7 @@
           </div>
           <span class="version-pill" id="versionPill">v0.3</span>
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
+          <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
 
@@ -243,6 +265,24 @@
       </div>
 
       <div class="section-heading">
+        <h2 data-i18n="settings.theme">UI style</h2>
+      </div>
+      <div class="theme-selector" id="themeSelector" role="group" data-i18n-aria-label="settings.theme.aria">
+        <button class="theme-option" type="button" data-ui-style="dark">
+          <span class="theme-preview dark-preview"><i></i><i></i><i></i></span>
+          <b data-i18n="settings.theme.dark">Dark teal</b>
+        </button>
+        <button class="theme-option" type="button" data-ui-style="candy">
+          <span class="theme-preview candy-preview"><i></i><i></i><i></i></span>
+          <b data-i18n="settings.theme.candy">Candy</b>
+        </button>
+        <button class="theme-option" type="button" data-ui-style="light">
+          <span class="theme-preview light-preview"><i></i><i></i><i></i></span>
+          <b data-i18n="settings.theme.light">Light workspace</b>
+        </button>
+      </div>
+
+      <div class="section-heading">
         <h2 data-i18n="settings.rhythm">Timer rhythm</h2>
       </div>
       <div class="timer-grid" id="steppers"></div>
@@ -262,6 +302,33 @@
           <span data-i18n="settings.widget.showControls">Show playback controls</span>
           <label class="toggle">
             <input id="setWidgetPlay" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <h2 data-i18n="settings.system">System</h2>
+      </div>
+      <div class="setting-card compact-list">
+        <div class="switch-row">
+          <span data-i18n="settings.system.launchAtLogin">Launch at login</span>
+          <label class="toggle">
+            <input id="setLaunchAtLogin" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+        <div class="switch-row">
+          <span data-i18n="settings.system.notifications">System notifications</span>
+          <label class="toggle">
+            <input id="setNotifications" type="checkbox" />
+            <span></span>
+          </label>
+        </div>
+        <div class="switch-row">
+          <span data-i18n="settings.system.notificationSound">Notification sound</span>
+          <label class="toggle">
+            <input id="setNotificationSound" type="checkbox" />
             <span></span>
           </label>
         </div>
@@ -303,6 +370,7 @@
         <div class="header-actions no-drag">
           <span class="count-pill" id="historyCount">Total 0</span>
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
+          <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
 

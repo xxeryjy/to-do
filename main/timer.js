@@ -25,6 +25,7 @@ class Timer extends EventEmitter {
     this.breakStartedAt = null    // 休息开始时间戳（写库用）
     this.recordingFor = null      // 当前 RECORDING 阶段属于 'focus' 还是 'break'
     this.awaitingFocusChoice = false // 专注到点后，等待用户选择休息或延长
+    this.awaitingBreakChoice = false // 休息到点后，等待用户选择继续休息或记录
     this.endAt = null             // 计时结束时间戳
     this.interval = null
     this.settings = {}            // 时长参数缓存
@@ -93,6 +94,7 @@ class Timer extends EventEmitter {
     this.running = true
     this.recordingFor = null
     this.awaitingFocusChoice = false
+    this.awaitingBreakChoice = false
     this.totalMs = this.currentDurationMs()
     this.remainMs = this.totalMs
     this.startedAt = Date.now()
@@ -102,7 +104,7 @@ class Timer extends EventEmitter {
 
   /** 暂停（工作段/休息通用） */
   pause() {
-    if (!this.running || this.awaitingFocusChoice) return
+    if (!this.running || this.awaitingFocusChoice || this.awaitingBreakChoice) return
     this.running = false
     this._stopTicker()
     this.emitState()
@@ -110,7 +112,7 @@ class Timer extends EventEmitter {
 
   /** 继续：仅允许继续已暂停的工作段或休息段 */
   resume() {
-    if (this.running || this.awaitingFocusChoice || this.stage === STAGE.IDLE || this.stage === STAGE.RECORDING) return
+    if (this.running || this.awaitingFocusChoice || this.awaitingBreakChoice || this.stage === STAGE.IDLE || this.stage === STAGE.RECORDING) return
     this.running = true
     this._startTicker()
     this.emitState()
@@ -121,6 +123,7 @@ class Timer extends EventEmitter {
     if (this.stage !== STAGE.FOCUS) return
     this._stopTicker()
     this.awaitingFocusChoice = false
+    this.awaitingBreakChoice = false
     this.stage = STAGE.BREAK
     this.running = true
     this.totalMs = this.currentDurationMs()
@@ -138,6 +141,7 @@ class Timer extends EventEmitter {
     this.running = false
     this.remainMs = 0
     this.awaitingFocusChoice = true
+    this.awaitingBreakChoice = false
     this.emitState()
     this.emit('focusAwaitingChoice', {
       startedAt: this.startedAt,
@@ -149,6 +153,7 @@ class Timer extends EventEmitter {
   finishFocusForRecording() {
     if (this.stage !== STAGE.FOCUS || !this.awaitingFocusChoice) return this.snapshot()
     this.awaitingFocusChoice = false
+    this.awaitingBreakChoice = false
     this.stage = STAGE.RECORDING
     this.recordingFor = 'focus'
     this.emitState()
@@ -165,6 +170,7 @@ class Timer extends EventEmitter {
     const minutes = Math.max(1, Math.min(120, parseInt(this.settings.delay_focus_min || 10, 10)))
     const extraMs = minutes * 60 * 1000
     this.awaitingFocusChoice = false
+    this.awaitingBreakChoice = false
     this.totalMs += extraMs
     this.remainMs = extraMs
     this.running = true
@@ -178,6 +184,7 @@ class Timer extends EventEmitter {
     if (this.stage !== STAGE.FOCUS || this.awaitingFocusChoice) return this.snapshot()
     this._stopTicker()
     this.running = false
+    this.awaitingBreakChoice = false
     const elapsedMs = Math.max(0, this.totalMs - this.remainMs)
     this.stage = STAGE.RECORDING
     this.recordingFor = 'focus'
@@ -192,6 +199,7 @@ class Timer extends EventEmitter {
   /** 记录保存后：进入休息 */
   startBreak() {
     this.awaitingFocusChoice = false
+    this.awaitingBreakChoice = false
     this.stage = STAGE.BREAK
     this.running = true
     this.totalMs = this.currentDurationMs()
@@ -204,23 +212,51 @@ class Timer extends EventEmitter {
 
   /** 跳过休息：进入下一工作段 */
   skipBreak() {
-    if (this.stage !== STAGE.BREAK) return
+    if (this.stage !== STAGE.BREAK || this.awaitingBreakChoice) return
     this._stopTicker()
     this._advanceRound()
     this._beginFocus()
   }
 
-  /** 休息计时结束：进入 RECORDING，等用户填休息记录，再进下一工作段 */
+  /** 休息计时结束：先询问是否继续休息，暂不进入记录页 */
   _onBreakFinished() {
     this._stopTicker()
     this.running = false
+    this.remainMs = 0
+    this.awaitingBreakChoice = true
+    this.emitState()
+    this.emit('breakAwaitingChoice', {
+      startedAt: this.breakStartedAt,
+      durationMin: Math.max(1, Math.round(this.totalMs / 60000))
+    })
+  }
+
+  /** 用户选择结束休息：进入记录页，整段延长时长合并为一条记录 */
+  finishBreakForRecording() {
+    if (this.stage !== STAGE.BREAK || !this.awaitingBreakChoice) return this.snapshot()
+    this.awaitingBreakChoice = false
     this.stage = STAGE.RECORDING
     this.recordingFor = 'break'
     this.emitState()
     this.emit('breakFinished', {
       startedAt: this.breakStartedAt,
-      durationMin: Math.round(this.totalMs / 60000)
+      durationMin: Math.max(1, Math.round(this.totalMs / 60000))
     })
+    return this.snapshot()
+  }
+
+  /** 用户选择继续休息：按设置时长延长当前休息 */
+  extendBreak() {
+    if (this.stage !== STAGE.BREAK || !this.awaitingBreakChoice) return this.snapshot()
+    const minutes = Math.max(1, Math.min(60, parseInt(this.settings.break_extend_min || 5, 10)))
+    const extraMs = minutes * 60 * 1000
+    this.awaitingBreakChoice = false
+    this.totalMs += extraMs
+    this.remainMs = extraMs
+    this.running = true
+    this._startTicker()
+    this.emitState()
+    return this.snapshot()
   }
 
   /** 用户提前结束休息：按实际已休息时长进入记录页 */
@@ -228,6 +264,7 @@ class Timer extends EventEmitter {
     if (this.stage !== STAGE.BREAK) return this.snapshot()
     this._stopTicker()
     this.running = false
+    this.awaitingBreakChoice = false
     const elapsedMs = Math.max(0, this.totalMs - this.remainMs)
     this.stage = STAGE.RECORDING
     this.recordingFor = 'break'
@@ -300,7 +337,9 @@ class Timer extends EventEmitter {
       startedAt: this.startedAt,
       recordingFor: this.recordingFor,
       awaitingFocusChoice: this.awaitingFocusChoice,
+      awaitingBreakChoice: this.awaitingBreakChoice,
       delayFocusMin: Math.max(1, Math.min(120, parseInt(this.settings.delay_focus_min || 10, 10))),
+      breakExtendMin: Math.max(1, Math.min(60, parseInt(this.settings.break_extend_min || 5, 10))),
       display: this.displayTime,
       isLongBreak: this.stage === STAGE.BREAK && this.phaseInRound % this.longBreakEvery() === 0
     }

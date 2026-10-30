@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('todo', {
   timerExtendFocus: () => ipcRenderer.invoke('timer:extend-focus'),
   timerEndFocusEarly: () => ipcRenderer.invoke('timer:end-focus-early'),
   timerEndBreakEarly: () => ipcRenderer.invoke('timer:end-break-early'),
+  timerFinishBreak: () => ipcRenderer.invoke('timer:finish-break'),
+  timerExtendBreak: () => ipcRenderer.invoke('timer:extend-break'),
   timerSkipBreak: () => ipcRenderer.invoke('timer:skip-break'),
   timerState: () => ipcRenderer.invoke('timer:state'),
 
@@ -51,6 +53,7 @@ contextBridge.exposeInMainWorld('todo', {
   onTimerState: (cb) => ipcRenderer.on('timer:state', (_e, state) => cb(state)),
   onTimerNotificationSound: (cb) => ipcRenderer.on('timer:notification-sound', () => cb()),
   onFocusAwaitingChoice: (cb) => ipcRenderer.on('timer:focus-awaiting-choice', (_e, payload) => cb(payload)),
+  onBreakAwaitingChoice: (cb) => ipcRenderer.on('timer:break-awaiting-choice', (_e, payload) => cb(payload)),
   onFocusFinished: (cb) => ipcRenderer.on('timer:focus-finished', (_e, payload) => cb(payload)),
   onBreakFinished: (cb) => ipcRenderer.on('timer:break-finished', (_e, payload) => cb(payload)),
   onSettingsChanged: (cb) => ipcRenderer.on('settings:changed', (_e, payload) => cb(payload)),

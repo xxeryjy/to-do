@@ -6,6 +6,30 @@
   <title data-i18n="app.widgetTitle">Desktop TODO · Widget</title>
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --widget-bg: #15171C;
+      --widget-line: #2A2E36;
+      --widget-text: #F5F7FA;
+      --widget-accent: #14B8A6;
+      --widget-track: #2A2E36;
+      --widget-shadow: rgba(0, 0, 0, 0.32);
+    }
+    :root[data-theme="candy"] {
+      --widget-bg: rgba(255, 253, 252, 0.96);
+      --widget-line: #F0D8E3;
+      --widget-text: #3C2733;
+      --widget-accent: #FF6FAE;
+      --widget-track: #F4DCE6;
+      --widget-shadow: rgba(159, 88, 122, 0.24);
+    }
+    :root[data-theme="light"] {
+      --widget-bg: rgba(255, 255, 255, 0.96);
+      --widget-line: #D5DBE2;
+      --widget-text: #1D1D1F;
+      --widget-accent: #5F8A70;
+      --widget-track: #E6EAF0;
+      --widget-shadow: rgba(36, 48, 60, 0.18);
+    }
     html, body {
       width: 100%;
       height: 100%;
@@ -22,10 +46,10 @@
       align-items: center;
       gap: 6px;
       padding: 4px 6px;
-      border: 1px solid #2A2E36;
+      border: 1px solid var(--widget-line);
       border-radius: 16px;
-      background: #15171C;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.32);
+      background: var(--widget-bg);
+      box-shadow: 0 4px 12px var(--widget-shadow);
       cursor: grab;
       -webkit-app-region: drag;
     }
@@ -38,8 +62,8 @@
       justify-content: center;
       flex: 0 0 22px;
       border-radius: 6px;
-      background: #14B8A6;
-      color: #07110E;
+      background: var(--widget-accent);
+      color: var(--widget-text);
       font-family: Inter, sans-serif;
       font-size: 9px;
       font-weight: 700;
@@ -53,18 +77,18 @@
       flex: 1;
       overflow: hidden;
       border-radius: 5px;
-      background: #2A2E36;
+      background: var(--widget-track);
     }
     .w-fill {
       width: 0;
       height: 100%;
       border-radius: inherit;
-      background: #14B8A6;
+      background: var(--widget-accent);
       transition: width 0.25s linear;
     }
     .w-time {
       min-width: 27px;
-      color: #F5F7FA;
+      color: var(--widget-text);
       font-family: 'Inter Tight', Inter, sans-serif;
       font-size: 9px;
       font-weight: 600;

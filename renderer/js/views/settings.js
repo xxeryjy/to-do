@@ -1,6 +1,6 @@
 /**
  * 桌面 TODO · 设置视图
- * 邮件、计时节奏、挂件显示和每日自动发送。
+ * 邮件、计时节奏、挂件、系统行为和每日自动发送。
  */
 ;(function () {
   const $ = (id) => document.getElementById(id)
@@ -10,7 +10,8 @@
     { key: 'short_break_min', labelKey: 'settings.stepper.shortBreak', min: 1, max: 30, unitKey: 'settings.unit.minutes', tileClass: '' },
     { key: 'long_break_min', labelKey: 'settings.stepper.longBreak', min: 1, max: 60, unitKey: 'settings.unit.minutes', tileClass: 'success-tile' },
     { key: 'long_break_every', labelKey: 'settings.stepper.longBreakEvery', min: 1, max: 8, unitKey: 'settings.unit.rounds', tileClass: 'warning-tile' },
-    { key: 'delay_focus_min', labelKey: 'settings.stepper.delay', min: 1, max: 120, unitKey: 'settings.unit.minutes', tileClass: '', wide: true }
+    { key: 'delay_focus_min', labelKey: 'settings.stepper.delay', min: 1, max: 120, unitKey: 'settings.unit.minutes', tileClass: '', wide: true },
+    { key: 'break_extend_min', labelKey: 'settings.stepper.breakExtend', min: 1, max: 60, unitKey: 'settings.unit.minutes', tileClass: '', wide: true }
   ]
 
   function labelOf(stepper) {
@@ -34,6 +35,14 @@
     $('autoMailHint').textContent = autoHint()
   }
 
+  function renderThemeSelection() {
+    const selected = window.Store.settings.ui_style || 'dark'
+    document.querySelectorAll('#themeSelector [data-ui-style]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.uiStyle === selected)
+      button.setAttribute('aria-pressed', button.dataset.uiStyle === selected ? 'true' : 'false')
+    })
+  }
+
   function render() {
     const settings = window.Store.settings
     const email = settings.qq_email || ''
@@ -50,9 +59,13 @@
     document.querySelectorAll('#languageSwitch [data-language]').forEach((button) => {
       button.classList.toggle('active', button.dataset.language === (settings.language || 'en'))
     })
+    renderThemeSelection()
 
     $('setWidgetPlay').checked = settings.widget_show_play === '1'
     $('setWidgetTime').checked = settings.widget_show_time === '1'
+    $('setLaunchAtLogin').checked = settings.launch_at_login === '1'
+    $('setNotifications').checked = settings.notifications_enabled === '1'
+    $('setNotificationSound').checked = settings.notification_sound_enabled === '1'
     $('setAutoMail').checked = settings.daily_mail_enabled === '1'
     $('setAutoMailTime').value = settings.daily_mail_time || '18:00'
     refreshAutoHint()
@@ -111,8 +124,12 @@
       emailOpen: $('emailEditor').classList.contains('open'),
       widgetPlay: $('setWidgetPlay').checked,
       widgetTime: $('setWidgetTime').checked,
+      launchAtLogin: $('setLaunchAtLogin').checked,
+      notifications: $('setNotifications').checked,
+      notificationSound: $('setNotificationSound').checked,
       autoMail: $('setAutoMail').checked,
-      autoMailTime: $('setAutoMailTime').value
+      autoMailTime: $('setAutoMailTime').value,
+      uiStyle: window.Store.settings.ui_style || 'dark'
     }
   }
 
@@ -121,8 +138,14 @@
     $('setAuth').value = draft.auth
     $('setWidgetPlay').checked = draft.widgetPlay
     $('setWidgetTime').checked = draft.widgetTime
+    $('setLaunchAtLogin').checked = draft.launchAtLogin
+    $('setNotifications').checked = draft.notifications
+    $('setNotificationSound').checked = draft.notificationSound
     $('setAutoMail').checked = draft.autoMail
     $('setAutoMailTime').value = draft.autoMailTime
+    window.Store.settings.ui_style = draft.uiStyle
+    window.App.applyTheme(draft.uiStyle)
+    renderThemeSelection()
     $('emailEditor').classList.toggle('open', draft.emailOpen)
     $('btnEditEmail').textContent = window.I18n.t(draft.emailOpen ? 'settings.email.collapse' : 'settings.email.edit')
     refreshAutoHint()
@@ -154,9 +177,13 @@
       qq_email: email,
       widget_show_play: $('setWidgetPlay').checked ? '1' : '0',
       widget_show_time: $('setWidgetTime').checked ? '1' : '0',
+      launch_at_login: $('setLaunchAtLogin').checked ? '1' : '0',
+      notifications_enabled: $('setNotifications').checked ? '1' : '0',
+      notification_sound_enabled: $('setNotificationSound').checked ? '1' : '0',
       daily_mail_time: autoTime || '18:00',
       daily_mail_enabled: autoEnabled ? '1' : '0',
-      language: window.Store.settings.language || 'en'
+      language: window.Store.settings.language || 'en',
+      ui_style: window.Store.settings.ui_style || 'dark'
     }
     if (auth) updates.qq_auth_code = auth
     for (const stepper of STEPPERS) {
@@ -188,6 +215,15 @@
     $('setAutoMail').addEventListener('change', refreshAutoHint)
     $('setAutoMailTime').addEventListener('input', refreshAutoHint)
     $('btnSaveSettings').addEventListener('click', saveSettings)
+    document.querySelectorAll('#themeSelector [data-ui-style]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const style = button.dataset.uiStyle
+        if (!style || style === window.Store.settings.ui_style) return
+        window.Store.settings.ui_style = style
+        window.App.applyTheme(style)
+        renderThemeSelection()
+      })
+    })
     document.querySelectorAll('#languageSwitch [data-language]').forEach((button) => {
       button.addEventListener('click', () => {
         changeLanguage(button.dataset.language).catch((error) => {

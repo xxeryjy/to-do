@@ -42,6 +42,7 @@ function init() {
     long_break_min: '15',
     long_break_every: '4',
     delay_focus_min: '10', // 专注结束后主动延长一轮的默认时长
+    break_extend_min: '5', // 休息结束后主动延长一轮的默认时长
     language: 'en', // 默认英文，可在设置中切换为中文
     qq_email: '',
     qq_auth_code: '',
@@ -53,6 +54,10 @@ function init() {
     daily_mail_last_success_date: '',
     daily_mail_last_skip_date: '',
     daily_mail_last_error: '',
+    ui_style: 'dark', // UI 主题：dark / candy / light
+    launch_at_login: '0', // 开机启动默认关闭
+    notifications_enabled: '1', // 计时结束系统通知
+    notification_sound_enabled: '1', // 计时结束提示音
     schema_version: '2'
   }
   const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')

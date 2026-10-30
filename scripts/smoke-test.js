@@ -51,7 +51,7 @@ console.log('[smoke] 2) 计时状态机')
 try {
   const timer = require(path.join(appDir, 'main', 'timer'))
   // 预置设置，避免触发 db；状态机转移不依赖 db
-  timer.settings = { work_min: '25', short_break_min: '5', long_break_min: '15', long_break_every: '3', delay_focus_min: '10' }
+  timer.settings = { work_min: '25', short_break_min: '5', long_break_min: '15', long_break_every: '3', delay_focus_min: '10', break_extend_min: '5' }
   assert(timer.stage === 'idle', '初始应为 idle')
   timer.startFocus()
   assert(timer.stage === 'focus', 'startFocus 后应为 focus')
@@ -74,7 +74,18 @@ try {
   timer.startBreak()
   assert(timer.stage === 'break', 'startBreak 后应为 break')
   timer._onBreakFinished()
-  assert(timer.stage === 'recording' && timer.recordingFor === 'break', '休息结束应进入 recording(break)')
+  assert(timer.stage === 'break' && timer.awaitingBreakChoice, '休息到点后应等待继续休息/记录选择')
+  const beforeBreakExtend = timer.totalMs
+  timer.extendBreak()
+  assert(timer.stage === 'break' && timer.running && !timer.awaitingBreakChoice, '延长后应继续当前休息')
+  assert(timer.totalMs === beforeBreakExtend + 5 * 60 * 1000, '延长休息应累加设置中的 5 分钟')
+  timer._onBreakFinished()
+  assert(timer.awaitingBreakChoice, '延长休息到点后应再次询问')
+  let extendedBreakDuration = 0
+  timer.once('breakFinished', (payload) => { extendedBreakDuration = payload.durationMin })
+  timer.finishBreakForRecording()
+  assert(timer.stage === 'recording' && timer.recordingFor === 'break', '选择结束后应进入 recording(break)')
+  assert(extendedBreakDuration === 10, '原始与延长的休息时间应合并为一条 10 分钟记录')
   const before = timer.phaseInRound
   timer.startNextFocus()
   assert(timer.stage === 'focus', 'startNextFocus 后应为 focus')

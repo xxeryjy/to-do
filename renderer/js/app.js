@@ -10,6 +10,13 @@
     { view: 'history', key: 'nav.history' },
     { view: 'settings', key: 'nav.settings' }
   ]
+  const THEME_STYLES = new Set(['dark', 'candy', 'light'])
+  const NAV_ICONS = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5l3.2 1.9"></path></svg>',
+    today: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"></rect><path d="M8 3.5v4M16 3.5v4M3.5 10h17"></path></svg>',
+    history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 8.2A8.4 8.4 0 1 1 3.7 14"></path><path d="M4 3.8v4.5h4.5M12 7.5v5l3.2 1.9"></path></svg>',
+    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6M14 7h6M4 17h3M11 17h9"></path><circle cx="12" cy="7" r="2"></circle><circle cx="8.5" cy="17" r="2"></circle></svg>'
+  }
 
   const App = {
     current: 'home',
@@ -28,6 +35,7 @@
           this.go('record')
         }
       })
+      this.applyTheme(window.Store.settings.ui_style)
 
       const nav = document.getElementById('navDots')
       nav.innerHTML = ''
@@ -37,7 +45,7 @@
         button.className = 'nav-item'
         button.dataset.go = item.view
         button.dataset.i18nNav = item.key
-        button.textContent = window.I18n.t(item.key)
+        button.innerHTML = `<span class="nav-icon">${NAV_ICONS[item.view]}</span><span class="nav-label">${window.I18n.t(item.key)}</span>`
         button.addEventListener('click', () => this.go(item.view))
         nav.appendChild(button)
       }
@@ -57,6 +65,7 @@
       this.bindWindowDrag()
       this.bindConfirmDialog()
       this.bindFatigueDialog()
+      this.bindBreakExtendDialog()
       this.bindGlobalShortcuts()
       this.bindAutoMailStatus()
       this.bindUpdater()
@@ -65,6 +74,7 @@
       window.HomeView && window.HomeView.refreshStats && window.HomeView.refreshStats()
       this.syncNav()
       this.maybeShowFatiguePrompt(window.Store.timer)
+      this.maybeShowBreakPrompt(window.Store.timer)
       if (window.Store.timer && window.Store.timer.stage === 'recording') {
         this.go('record')
       }
@@ -131,6 +141,26 @@
       }
     },
 
+    bindBreakExtendDialog() {
+      document.getElementById('btnBreakExtend').addEventListener('click', async () => {
+        const minutes = Math.max(1, Math.min(60, parseInt(window.Store.settings.break_extend_min || '5', 10)))
+        this.hideBreakPrompt()
+        const state = await window.todo.timerExtendBreak()
+        if (state) window.Store.applyTimerState(state)
+        this.toast(window.I18n.t('breakExtend.extended', { minutes }))
+      })
+
+      document.getElementById('btnBreakFinish').addEventListener('click', async () => {
+        this.hideBreakPrompt()
+        const state = await window.todo.timerFinishBreak()
+        if (state) window.Store.applyTimerState(state)
+      })
+
+      if (window.todo.onBreakAwaitingChoice) {
+        window.todo.onBreakAwaitingChoice((payload) => this.showBreakPrompt(payload))
+      }
+    },
+
     playNotificationSound() {
       if (!this._notificationAudio) {
         this._notificationAudio = new Audio('../assets/notification.wav')
@@ -163,12 +193,48 @@
       if (state && state.awaitingFocusChoice) this.showFatiguePrompt(state)
     },
 
+    showBreakPrompt(payload = {}) {
+      const state = window.Store.timer || {}
+      const duration = Math.max(
+        1,
+        parseInt(payload.durationMin || Math.round((state.totalMs || 0) / 60000) || '5', 10)
+      )
+      const extension = Math.max(
+        1,
+        Math.min(60, parseInt(window.Store.settings.break_extend_min || state.breakExtendMin || '5', 10))
+      )
+      document.getElementById('breakExtendEyebrow').textContent = window.I18n.t('breakExtend.eyebrow', { minutes: duration })
+      document.getElementById('btnBreakExtend').textContent = window.I18n.t('breakExtend.continue', { minutes: extension })
+      document.getElementById('breakExtendHint').textContent = window.I18n.t('breakExtend.hint')
+      document.getElementById('breakExtendPanel').hidden = false
+      document.querySelector('.timer-card').classList.add('awaiting-choice')
+      document.getElementById('btnBreakExtend').focus()
+    },
+
+    hideBreakPrompt() {
+      document.getElementById('breakExtendPanel').hidden = true
+      document.querySelector('.timer-card').classList.remove('awaiting-choice')
+    },
+
+    maybeShowBreakPrompt(state) {
+      if (state && state.awaitingBreakChoice) this.showBreakPrompt(state)
+    },
+
     refreshLanguage() {
       window.I18n.setLanguage(window.Store.settings.language || 'en')
       window.I18n.translateDocument()
       document.querySelectorAll('[data-i18n-nav]').forEach((button) => {
-        button.textContent = window.I18n.t(button.dataset.i18nNav)
+        const label = button.querySelector('.nav-label')
+        if (label) label.textContent = window.I18n.t(button.dataset.i18nNav)
+        else button.textContent = window.I18n.t(button.dataset.i18nNav)
       })
+    },
+
+    applyTheme(style) {
+      const nextStyle = THEME_STYLES.has(style) ? style : 'dark'
+      document.documentElement.dataset.theme = nextStyle
+      this.syncNav()
+      return nextStyle
     },
 
     confirm({
@@ -483,9 +549,12 @@
     syncNav() {
       const recording = window.Store.timer && window.Store.timer.stage === 'recording'
       const nav = document.getElementById('navDots')
-      nav.classList.toggle('hidden', this.current === 'record' || !!recording)
+      if (!nav) return
+      const lightWorkspace = document.documentElement.dataset.theme === 'light'
+      nav.classList.toggle('hidden', !lightWorkspace && (this.current === 'record' || !!recording))
+      const activeView = this.current === 'record' ? 'home' : this.current
       nav.querySelectorAll('.nav-item').forEach((item) => {
-        item.classList.toggle('active', item.dataset.go === this.current)
+        item.classList.toggle('active', item.dataset.go === activeView)
       })
     },
 

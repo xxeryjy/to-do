@@ -1,0 +1,402 @@
+/* 桌面 TODO · Page 5 糖果风格 */
+:root[data-theme="candy"] {
+  --bg: #FFF7FB;
+  --card: rgba(255, 255, 255, 0.9);
+  --panel: #FFF2F7;
+  --panel-2: #FFE7F0;
+  --text: #3C2733;
+  --text-2: #856D79;
+  --text-3: #AA8F9C;
+  --line: #F0D8E3;
+  --line-soft: #F7E6ED;
+  --primary: #FF6FAE;
+  --primary-soft: #FFE1ED;
+  --primary-text: #E94C91;
+  --success: #3ABF9D;
+  --warning: #D69237;
+  --danger: #EF6B74;
+  --radius-card: 26px;
+  --radius-control: 14px;
+  --shadow: 0 18px 38px rgba(159, 88, 122, 0.13);
+  --shadow-soft: 0 8px 20px rgba(159, 88, 122, 0.09);
+  --font-display: 'Inter Tight', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+:root[data-theme="candy"] body,
+:root[data-theme="candy"] .app-shell {
+  background:
+    radial-gradient(circle at 14% 5%, rgba(255, 194, 219, 0.75), transparent 31%),
+    radial-gradient(circle at 90% 22%, rgba(201, 184, 255, 0.52), transparent 34%),
+    radial-gradient(circle at 72% 96%, rgba(255, 214, 107, 0.38), transparent 32%),
+    #F8EFF5;
+}
+
+:root[data-theme="candy"] .view {
+  gap: 12px;
+  padding: 20px 22px 86px;
+  background: transparent;
+}
+
+:root[data-theme="candy"] .record-view {
+  padding-bottom: 20px;
+}
+
+:root[data-theme="candy"] .settings-view {
+  padding-bottom: 88px;
+}
+
+:root[data-theme="candy"] .page-header {
+  min-height: 50px;
+}
+
+:root[data-theme="candy"] .brand-mark {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #FF6FAE, #FFC29A);
+  box-shadow: 0 10px 18px rgba(255, 111, 174, 0.25);
+}
+
+:root[data-theme="candy"] .brand-mark img {
+  display: none;
+}
+
+:root[data-theme="candy"] .brand-mark::after {
+  content: '✦';
+  color: #FFFFFF;
+  font-size: 19px;
+  line-height: 1;
+}
+
+:root[data-theme="candy"] .page-title-group h1 {
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+:root[data-theme="candy"] .page-title-group p {
+  color: var(--text-2);
+  font-size: 9px;
+}
+
+:root[data-theme="candy"] .status-pill,
+:root[data-theme="candy"] .phase-pill,
+:root[data-theme="candy"] .date-pill,
+:root[data-theme="candy"] .version-pill,
+:root[data-theme="candy"] .count-pill,
+:root[data-theme="candy"] .shortcut-chip,
+:root[data-theme="candy"] .icon-button {
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.74);
+  color: #8D6D7C;
+  box-shadow: 0 5px 12px rgba(156, 89, 117, 0.08);
+}
+
+:root[data-theme="candy"] .status-pill,
+:root[data-theme="candy"] .phase-pill,
+:root[data-theme="candy"] .date-pill,
+:root[data-theme="candy"] .version-pill,
+:root[data-theme="candy"] .count-pill {
+  color: var(--primary-text);
+  background: rgba(255, 235, 243, 0.88);
+}
+
+:root[data-theme="candy"] .timer-card,
+:root[data-theme="candy"] .today-summary-card,
+:root[data-theme="candy"] .record-card,
+:root[data-theme="candy"] .email-card,
+:root[data-theme="candy"] .setting-card,
+:root[data-theme="candy"] .timer-tile,
+:root[data-theme="candy"] .theme-option {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(255, 235, 244, 0.92));
+  box-shadow: var(--shadow-soft);
+}
+
+:root[data-theme="candy"] .timer-card {
+  gap: 12px;
+  padding: 22px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 88% 5%, rgba(255, 178, 207, 0.28), transparent 30%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(255, 229, 240, 0.94));
+}
+
+:root[data-theme="candy"] .eyebrow {
+  color: #E75494;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+:root[data-theme="candy"] .timer-time {
+  color: #2F2028;
+  font-size: 76px;
+  font-weight: 800;
+  letter-spacing: -5px;
+}
+
+:root[data-theme="candy"] .timer-tagline {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+:root[data-theme="candy"] .progress-track {
+  height: 9px;
+  border-radius: 99px;
+  background: #F5DDE8;
+}
+
+:root[data-theme="candy"] .progress-fill {
+  background: linear-gradient(90deg, #FF6FAE, #FF8C87 55%, #FFD66B);
+}
+
+:root[data-theme="candy"] .progress-labels {
+  color: #AD929F;
+}
+
+:root[data-theme="candy"] .metrics-grid {
+  height: 68px;
+  border-radius: 18px;
+  background: rgba(255, 244, 248, 0.86);
+}
+
+:root[data-theme="candy"] .metric-value {
+  color: #3C2733;
+}
+
+:root[data-theme="candy"] .metric-primary {
+  color: #F04F91;
+}
+
+:root[data-theme="candy"] .metric-success {
+  color: #31AE91;
+}
+
+:root[data-theme="candy"] .metric-warning {
+  color: #D9932F;
+}
+
+:root[data-theme="candy"] .metric-label {
+  color: #A98E9B;
+}
+
+:root[data-theme="candy"] .preset-group {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-soft);
+}
+
+:root[data-theme="candy"] .preset-option {
+  border-radius: 13px;
+  color: var(--text-2);
+}
+
+:root[data-theme="candy"] .preset-option:hover {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+}
+
+:root[data-theme="candy"] .preset-option.active,
+:root[data-theme="candy"] .primary-button,
+:root[data-theme="candy"] .mail-button,
+:root[data-theme="candy"] .save-button {
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #FF6FAE, #F24B8D);
+  box-shadow: 0 8px 18px rgba(255, 111, 174, 0.23);
+}
+
+:root[data-theme="candy"] .secondary-button,
+:root[data-theme="candy"] .square-button {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  color: #856D79;
+  box-shadow: 0 5px 12px rgba(156, 89, 117, 0.07);
+}
+
+:root[data-theme="candy"] .secondary-button:hover,
+:root[data-theme="candy"] .square-button:hover {
+  background: #FFFFFF;
+  color: #E75494;
+}
+
+:root[data-theme="candy"] .record-summary {
+  border-radius: 18px;
+  background: rgba(255, 239, 246, 0.84);
+}
+
+:root[data-theme="candy"] .record-input-wrap {
+  border-radius: 18px;
+  background: rgba(255, 247, 250, 0.9);
+}
+
+:root[data-theme="candy"] #recInput {
+  color: var(--text);
+}
+
+:root[data-theme="candy"] #recInput::placeholder,
+:root[data-theme="candy"] .auto-save {
+  color: #B295A2;
+}
+
+:root[data-theme="candy"] .tag-chip {
+  background: #FFF0F5;
+  color: #9C7789;
+}
+
+:root[data-theme="candy"] .tag-chip:hover,
+:root[data-theme="candy"] .tag-chip.selected {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+}
+
+:root[data-theme="candy"] .today-focus-total {
+  border-radius: 16px;
+  background: linear-gradient(135deg, #FFE5EF, #FFF0DD);
+}
+
+:root[data-theme="candy"] .today-focus-total b {
+  color: #EF4E91;
+}
+
+:root[data-theme="candy"] .mini-stat,
+:root[data-theme="candy"] .record-item,
+:root[data-theme="candy"] .history-record,
+:root[data-theme="candy"] .mail-card,
+:root[data-theme="candy"] .search-bar,
+:root[data-theme="candy"] .history-stats {
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 6px 16px rgba(158, 95, 121, 0.06);
+}
+
+:root[data-theme="candy"] .record-accent {
+  background: linear-gradient(#FF6FAE, #FFD66B);
+}
+
+:root[data-theme="candy"] .segmented {
+  background: #FFF0F6;
+}
+
+:root[data-theme="candy"] .segment-option {
+  color: #9C7C8B;
+}
+
+:root[data-theme="candy"] .segment-option.active {
+  color: #E75494;
+  background: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(159, 88, 122, 0.08);
+}
+
+:root[data-theme="candy"] .field,
+:root[data-theme="candy"] .manual-duration input,
+:root[data-theme="candy"] .field input,
+:root[data-theme="candy"] .auto-time-row input {
+  background: #FFF2F7;
+  color: var(--text);
+}
+
+:root[data-theme="candy"] .timer-tile:hover {
+  border-color: #FFB7D3;
+  background: #FFFFFF;
+}
+
+:root[data-theme="candy"] .timer-tile.primary-tile b,
+:root[data-theme="candy"] .timer-tile.success-tile b,
+:root[data-theme="candy"] .timer-tile.warning-tile b {
+  color: var(--primary-text);
+}
+
+:root[data-theme="candy"] .stepper-actions {
+  background: #FFE7F0;
+}
+
+:root[data-theme="candy"] .stepper-actions button:hover,
+:root[data-theme="candy"] .stepper-actions button:active {
+  background: #FFFFFF;
+  color: var(--primary-text);
+}
+
+:root[data-theme="candy"] .switch-row > span,
+:root[data-theme="candy"] .update-copy b {
+  color: var(--text);
+}
+
+:root[data-theme="candy"] .toggle span {
+  background: #EFD3DF;
+}
+
+:root[data-theme="candy"] .toggle input:checked + span {
+  background: linear-gradient(135deg, #FF6FAE, #FF8C87);
+}
+
+:root[data-theme="candy"] .theme-option.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), 0 8px 16px rgba(255, 111, 174, 0.12);
+}
+
+:root[data-theme="candy"] .theme-option.active b {
+  color: var(--primary-text);
+}
+
+:root[data-theme="candy"] .theme-preview {
+  border-radius: 10px;
+}
+
+:root[data-theme="candy"] .bottom-nav {
+  left: 20px;
+  right: 20px;
+  bottom: 16px;
+  height: 56px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 19px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 28px rgba(158, 95, 121, 0.12);
+}
+
+:root[data-theme="candy"] .nav-item {
+  border-radius: 14px;
+  color: #997B89;
+}
+
+:root[data-theme="candy"] .nav-item.active {
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #FF6FAE, #F85B97);
+  box-shadow: 0 7px 16px rgba(255, 111, 174, 0.21);
+}
+
+:root[data-theme="candy"] .fatigue-inline {
+  border-color: #F3D4E1;
+  border-radius: 18px;
+  background: rgba(255, 244, 248, 0.92);
+}
+
+:root[data-theme="candy"] .fatigue-icon {
+  border-color: #FFD0E0;
+  background: #FFE5EF;
+}
+
+:root[data-theme="candy"] .toast {
+  color: #FFFFFF;
+  background: #3C2733;
+  box-shadow: 0 10px 24px rgba(89, 42, 64, 0.23);
+}
+
+:root[data-theme="candy"] .confirm-overlay,
+:root[data-theme="candy"] .update-overlay {
+  background: rgba(85, 48, 65, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+:root[data-theme="candy"] .confirm-panel,
+:root[data-theme="candy"] .update-panel {
+  border-color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(155deg, #FFFFFF, #FFF1F7);
+  box-shadow: 0 22px 54px rgba(120, 67, 89, 0.22);
+}

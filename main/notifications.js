@@ -9,6 +9,7 @@ const i18n = require('./i18n')
 
 /** 显示专注或休息结束通知 */
 function showTimerNotification(kind, { onClick } = {}) {
+  if (db.getSetting('notifications_enabled', '1') !== '1') return { shown: false, disabled: true }
   if (!Notification.isSupported()) return { shown: false }
 
   const language = db.getSetting('language', 'en')

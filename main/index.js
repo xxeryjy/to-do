@@ -47,6 +47,18 @@ let tray = null
 /** @type {boolean} 是否正在退出（托盘菜单「退出」触发） */
 let quitting = false
 
+/** 将设置中的开机启动状态同步到操作系统 */
+function applyLoginItemSetting() {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: db.getSetting('launch_at_login', '0') === '1',
+      path: process.execPath
+    })
+  } catch (error) {
+    console.error('[startup] 同步开机启动设置失败：', error.message)
+  }
+}
+
 /**
  * 最小化到托盘：隐藏主窗口，挂件与计时继续运行
  */
@@ -204,6 +216,7 @@ function showMainWindow() {
 
 app.whenReady().then(() => {
   db.init()          // 初始化数据库（建表）
+  applyLoginItemSetting()
   timer.init()       // 初始化计时器（加载设置里的时长参数）
   registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate })
 

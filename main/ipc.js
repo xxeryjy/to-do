@@ -2,7 +2,7 @@
  * 桌面 TODO · IPC 层
  * 注册全部渲染进程 → 主进程通道；计时器状态统一广播到所有窗口。
  */
-const { ipcMain, BrowserWindow, shell } = require('electron')
+const { app, ipcMain, BrowserWindow, shell } = require('electron')
 const timer = require('./timer')
 const db = require('./db')
 const mailer = require('./mailer')
@@ -59,6 +59,16 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
 
   ipcMain.handle('timer:end-break-early', () => {
     timer.endBreakEarlyForRecording()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:finish-break', () => {
+    timer.finishBreakForRecording()
+    return timer.snapshot()
+  })
+
+  ipcMain.handle('timer:extend-break', () => {
+    timer.extendBreak()
     return timer.snapshot()
   })
 
@@ -152,10 +162,18 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
       stored[key] = key === 'qq_auth_code' && value ? secret.encrypt(value) : value
     }
 
+    // 先同步系统登录项，失败时不写入数据库，避免设置显示成功但实际未生效。
+    if (Object.prototype.hasOwnProperty.call(stored, 'launch_at_login')) {
+      app.setLoginItemSettings({
+        openAtLogin: stored.launch_at_login === '1',
+        path: process.execPath
+      })
+    }
+
     db.setSettings(stored)
     const keys = Object.keys(stored)
 
-    if (keys.some((key) => ['work_min', 'short_break_min', 'long_break_min', 'long_break_every', 'delay_focus_min'].includes(key))) {
+    if (keys.some((key) => ['work_min', 'short_break_min', 'long_break_min', 'long_break_every', 'delay_focus_min', 'break_extend_min'].includes(key))) {
       timer.refreshSettings()
     }
     if (keys.includes('language') && refreshTrayLanguage) {
@@ -247,9 +265,11 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
 
   const notifyTimerCompletion = (kind) => {
     // 主渲染进程播放自定义提示音，用户点击系统通知后再恢复窗口
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('timer:notification-sound')
+    if (db.getSetting('notification_sound_enabled', '1') === '1') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('timer:notification-sound')
+        }
       }
     }
     notifications.showTimerNotification(kind, { onClick: showMainWindow })
@@ -284,6 +304,16 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     showMainWindow()
   })
 
+  timer.on('breakAwaitingChoice', (payload) => {
+    // 休息到点后先询问是否继续，不立即跳转记录页
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('timer:break-awaiting-choice', payload)
+      }
+    }
+    notifyTimerCompletion('break')
+  })
+
   timer.on('breakFinished', (payload) => {
     // 透传 timer.js 算好的 { startedAt, durationMin }，别再清空成 {}（否则渲染层只能 now-startedAt 兜底）
     for (const win of BrowserWindow.getAllWindows()) {
@@ -291,7 +321,6 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
         win.webContents.send('timer:break-finished', payload)
       }
     }
-    notifyTimerCompletion('break')
   })
 
   autoMail.on('status', (payload) => {

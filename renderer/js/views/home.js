@@ -25,12 +25,21 @@
     if (!state) return
 
     $('homeTime').textContent = state.display
+    $('homePhaseLabel').textContent = window.I18n.t(state.stage === 'break' ? 'home.phase.break' : 'home.phase.focus')
     const awaitingChoice = !!state.awaitingFocusChoice
-    $('homeStatusText').textContent = window.I18n.t(awaitingChoice ? 'home.status.awaitingChoice' : `home.status.${state.stage}`)
+    const awaitingBreakChoice = !!state.awaitingBreakChoice
+    const statusKey = awaitingChoice
+      ? 'home.status.awaitingChoice'
+      : awaitingBreakChoice
+        ? 'home.status.breakAwaitingChoice'
+        : `home.status.${state.stage}`
+    $('homeStatusText').textContent = window.I18n.t(statusKey)
     $('homeStatusDot').style.background = STATUS_COLOR[state.stage] || STATUS_COLOR.idle
 
     const modeKey = awaitingChoice
       ? 'home.mode.awaitingChoice'
+      : awaitingBreakChoice
+        ? 'home.mode.breakAwaitingChoice'
       : state.stage === 'focus'
       ? (state.running ? 'home.mode.focus' : 'home.mode.focusPaused')
       : (state.stage === 'break'
@@ -54,11 +63,11 @@
 
     const recording = state.stage === 'recording'
     const idle = state.stage === 'idle'
-    $('btnStop').disabled = recording || idle || awaitingChoice
+    $('btnStop').disabled = recording || idle || awaitingChoice || awaitingBreakChoice
     $('btnAddManualHome').disabled = recording
-    $('btnStart').disabled = awaitingChoice
+    $('btnStart').disabled = awaitingChoice || awaitingBreakChoice
 
-    if (awaitingChoice) {
+    if (awaitingChoice || awaitingBreakChoice) {
       $('btnStart').textContent = window.I18n.t('home.action.choose')
     } else if (recording) {
       $('btnStart').textContent = window.I18n.t('home.action.record')
