@@ -2,61 +2,59 @@
 
 > 引擎：SQLite（better-sqlite3，同步 API）
 > 库文件：`app.getPath('userData')/desktop-todo.db`
-> 迁移：启动时 `CREATE TABLE IF NOT EXISTS` 建表，版本字段预留
-
----
+> 当前版本：v0.6.0
+> 迁移：启动时创建缺失表，并通过 `PRAGMA table_info` 增量补充字段
 
 ## 1. sessions（工作段/休息记录）
 
 ```sql
 CREATE TABLE IF NOT EXISTS sessions (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  type        TEXT    NOT NULL DEFAULT 'focus',   -- 'focus' 工作段 | 'break' 休息段
-  started_at  TEXT    NOT NULL,                   -- ISO 8601 本地时间，如 2026-08-07T13:00:00+08:00
-  ended_at    TEXT    NOT NULL,
-  duration_min INTEGER NOT NULL,                  -- 实际分钟数
-  content     TEXT,                               -- 记录文本；放弃/休息段为 NULL
-  tag         TEXT                                -- 快捷标签，如 '写代码'；无则 NULL
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  type         TEXT    NOT NULL DEFAULT 'focus',
+  started_at   TEXT    NOT NULL,
+  ended_at     TEXT    NOT NULL,
+  duration_min INTEGER NOT NULL,
+  content      TEXT,
+  tag          TEXT,
+  task_id      INTEGER
 );
-
--- 查询按日期分组/筛选用
-CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
-CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(type);
 ```
 
-### 字段约定
-- `started_at` / `ended_at`：统一存带时区偏移的 ISO 字符串，展示时前端本地化。
-- `type='break'` 的行也写入（用于统计休息次数），`content`/`tag` 恒为 NULL。
-- 「放弃」的工作段**不插入任何行**（不是 content 为空，而是整段不存在）。
-- `duration_min`：由主进程计时器累计（暂停不叠加），不是 `ended_at - started_at`，避免跨时区误差。
+- `type`：`focus` 工作段，`break` 休息段。
+- `duration_min`：计时器实际时长，不是简单计算结束时间与开始时间之差。
+- `task_id`：仅工作段可关联任务；休息段为 `NULL`。
+- 旧数据库在启动时自动补充 `task_id` 字段。
+- 放弃的工作段不写入记录。
 
-### 典型查询
+索引：`started_at`、`type`。
+
+## 2. tasks（扁平任务）
+
 ```sql
--- 今日记录
-SELECT * FROM sessions
-WHERE type='focus' AND date(started_at) = date('now','localtime')
-ORDER BY started_at DESC;
-
--- 今日统计
-SELECT COUNT(*) AS segs,
-       COALESCE(SUM(duration_min),0) AS minutes
-FROM sessions WHERE type='focus' AND date(started_at) = date('now','localtime');
-
--- 搜索（关键词匹配内容或标签）
-SELECT * FROM sessions
-WHERE type='focus'
-  AND (content LIKE '%'||:kw||'%' OR tag LIKE '%'||:kw||'%')
-ORDER BY started_at DESC;
-
--- 日期筛选：今天/昨天/本周/全部（今天为例）
-WHERE date(started_at) = date('now','localtime')
--- 昨天
-WHERE date(started_at) = date('now','localtime','-1 day')
--- 本周（周一为一周开始，SQLite 默认周日，用 strftime('%W') 或由应用层传起止日期）
-WHERE date(started_at) BETWEEN :week_start AND :week_end
+CREATE TABLE IF NOT EXISTS tasks (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  title           TEXT    NOT NULL,
+  status          TEXT    NOT NULL DEFAULT 'open',
+  created_at      TEXT    NOT NULL,
+  completed_at    TEXT,
+  estimate_min    INTEGER,
+  project         TEXT,
+  scheduled_start TEXT,
+  scheduled_end   TEXT,
+  source          TEXT    NOT NULL DEFAULT 'local',
+  external_id     TEXT
+);
 ```
 
-## 2. settings（键值配置）
+- `status`：`open` 或 `done`。
+- `estimate_min`：可选预估分钟。
+- `project`：可选项目名，用于项目投入统计。
+- `scheduled_start` / `scheduled_end`：拖拽排期后的 ISO 时间。
+- `source` / `external_id`：为 GitHub、Jira、Notion、Todoist 等适配层预留。
+- 今日页返回所有未完成任务，以及今天完成的任务。
+- 任务累计专注分钟数通过 `sessions.task_id` 聚合得到。
+
+## 3. settings（键值配置）
 
 ```sql
 CREATE TABLE IF NOT EXISTS settings (
@@ -65,20 +63,49 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 ```
 
-| key | value 示例 | 说明 |
-|---|---|---|
-| `qq_email` | `user@qq.com` | QQ 邮箱地址 |
-| `qq_auth_code` | `abcdefghijklmn` | QQ SMTP 授权码（16 位） |
-| `work_min` | `25` | 工作段分钟 |
-| `short_break_min` | `5` | 短休分钟 |
-| `long_break_min` | `15` | 长休分钟 |
-| `long_break_every` | `4` | 每 N 段长休 |
-| `widget_top` | `1` | 挂件置顶开关（'1'/'0'） |
-| `schema_version` | `1` | 预留迁移用 |
+主要配置分组：
 
-读取封装：`getSetting(key)` 返回 string（不存在返回默认值）；`setSetting(key,value)` 走 UPSERT。
+| 分组 | 示例键 |
+| --- | --- |
+| 计时 | `work_min`、`short_break_min`、`long_break_min`、`long_break_every`、`delay_focus_min`、`break_extend_min` |
+| 语言与主题 | `language`、`ui_style` |
+| 邮件 | `qq_email`、`qq_auth_code`、`daily_mail_*`、`weekly_mail_*` |
+| 挂件 | `widget_top`、`widget_show_time`、`widget_show_play` |
+| 系统 | `launch_at_login`、`notifications_enabled`、`notification_sound_enabled` |
+| 自动化 | `automation_draft_enabled`、`automation_task_mapping_enabled`、`focus_scene_enabled`、`focus_scene_dnd_enabled`、`focus_launch_apps_enabled`、`focus_launch_apps`、`shortcuts_enabled` |
+| 迁移 | `schema_version` |
 
-## 3. 不落库的数据
+- `qq_auth_code` 通过 Electron `safeStorage` 加密后存储。
+- `focus_launch_apps` 为 JSON 数组，只保存用户明确填写的本地路径。
+- 所有布尔设置使用字符串 `'1'` / `'0'`。
 
-- 计时器运行时状态（当前阶段、剩余秒数、已暂停）—— 只在主进程内存，崩溃不恢复（MVP 接受）。
-- 记录填写草稿 —— 内存防抖保存，重启丢弃（MVP 接受）。
+## 4. 主要聚合
+
+### 项目投入
+
+```sql
+SELECT COALESCE(NULLIF(TRIM(t.project), ''), 'Unassigned') AS project,
+       SUM(s.duration_min) AS minutes
+FROM sessions s
+JOIN tasks t ON t.id = s.task_id
+WHERE s.type = 'focus'
+  AND date(s.started_at, 'localtime') >= date('now', 'localtime', 'start of month')
+GROUP BY project
+ORDER BY minutes DESC;
+```
+
+### 预估与实际偏差
+
+```sql
+SELECT t.title, t.estimate_min, SUM(s.duration_min) AS actual_min
+FROM tasks t
+JOIN sessions s ON s.task_id = t.id AND s.type = 'focus'
+WHERE t.estimate_min IS NOT NULL
+GROUP BY t.id;
+```
+
+## 5. 不落库的数据
+
+- 当前计时阶段、剩余时间、暂停状态：主进程内存。
+- 记录编辑草稿：当前页面内存，自动生成但保存前不写库。
+- OAuth 令牌：当前尚未接入真实平台，不存储模拟令牌。

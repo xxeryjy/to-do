@@ -46,6 +46,9 @@
         ? (state.isLongBreak ? 'home.mode.breakLong' : 'home.mode.breakShort')
         : `home.mode.${state.stage}`)
     $('homeMode').textContent = window.I18n.t(modeKey)
+    const taskContext = $('homeTaskContext')
+    taskContext.hidden = !state.taskTitle
+    $('homeTaskTitle').textContent = state.taskTitle || ''
 
     const every = parseInt(window.Store.settings.long_break_every || 4, 10)
     $('homePhase').textContent = `${String(state.phaseInRound).padStart(2, '0')} / ${String(every).padStart(2, '0')}`

@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('todo', {
   // 计时器
   timerSetDuration: (minutes) => ipcRenderer.invoke('timer:set-duration', { minutes }),
-  timerStart: (minutes) => ipcRenderer.invoke('timer:start', { minutes }),
+  timerStart: (minutes, taskId, taskTitle, taskProject) => ipcRenderer.invoke('timer:start', { minutes, taskId, taskTitle, taskProject }),
   timerPause: () => ipcRenderer.invoke('timer:pause'),
   timerResume: () => ipcRenderer.invoke('timer:resume'),
   timerStop: () => ipcRenderer.invoke('timer:stop'),
@@ -27,6 +27,17 @@ contextBridge.exposeInMainWorld('todo', {
   recordUpdate: (payload) => ipcRenderer.invoke('record:update', payload),
   recordGetToday: () => ipcRenderer.invoke('record:get-today'),
   recordSearch: (kw, range) => ipcRenderer.invoke('record:search', { kw, range }),
+
+  // 任务
+  taskList: () => ipcRenderer.invoke('task:list'),
+  taskCreate: (payload) => ipcRenderer.invoke('task:create', typeof payload === 'string' ? { title: payload } : payload),
+  taskComplete: (id, completed) => ipcRenderer.invoke('task:complete', { id, completed }),
+  taskSchedule: (id, scheduledStart, scheduledEnd) => ipcRenderer.invoke('task:schedule', { id, scheduledStart, scheduledEnd }),
+  taskStats: () => ipcRenderer.invoke('task:stats'),
+
+  // 外部工具适配层
+  integrationsList: () => ipcRenderer.invoke('integrations:list'),
+  integrationConnect: (providerId) => ipcRenderer.invoke('integrations:connect', { providerId }),
 
   // 设置
   settingsGet: () => ipcRenderer.invoke('settings:get'),
@@ -58,5 +69,7 @@ contextBridge.exposeInMainWorld('todo', {
   onBreakFinished: (cb) => ipcRenderer.on('timer:break-finished', (_e, payload) => cb(payload)),
   onSettingsChanged: (cb) => ipcRenderer.on('settings:changed', (_e, payload) => cb(payload)),
   onAutoMailStatus: (cb) => ipcRenderer.on('mail:auto-status', (_e, payload) => cb(payload)),
-  onUpdateStatus: (cb) => ipcRenderer.on('update:status', (_e, payload) => cb(payload))
+  onUpdateStatus: (cb) => ipcRenderer.on('update:status', (_e, payload) => cb(payload)),
+  onFocusScene: (cb) => ipcRenderer.on('automation:focus-scene', (_e, payload) => cb(payload)),
+  onAutomationShortcut: (cb) => ipcRenderer.on('automation:shortcut', (_e, action) => cb(action))
 })

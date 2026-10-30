@@ -1,4 +1,7 @@
-# 桌面 TODO · 开发规格说明书
+# 桌面 TODO · 历史设计规格
+
+> 历史文档：本文对应早期 v0.1 六屏糖果设计，用于追溯初始交互。
+> 当前任务、规划、自动化和系统行为以 `README.md`、`docs/功能流程-开机启动-UI主题-窗口控制-记录自动化.md` 与 `docs/architecture.md` 为准。
 
 > 版本：v0.1（对应糖果版六屏设计稿）
 > 配套文档：`database.md`（数据模型）、`architecture.md`（Electron 架构）

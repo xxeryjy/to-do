@@ -53,8 +53,9 @@ try {
   // 预置设置，避免触发 db；状态机转移不依赖 db
   timer.settings = { work_min: '25', short_break_min: '5', long_break_min: '15', long_break_every: '3', delay_focus_min: '10', break_extend_min: '5' }
   assert(timer.stage === 'idle', '初始应为 idle')
-  timer.startFocus()
+  timer.startFocus(null, 77, '任务 A')
   assert(timer.stage === 'focus', 'startFocus 后应为 focus')
+  assert(timer.taskId === 77 && timer.taskTitle === '任务 A', '从任务开始专注时应携带任务信息')
   const guardedRemain = timer.remainMs
   const guardedStartedAt = timer.startedAt
   timer.startFocus(60)
@@ -73,6 +74,7 @@ try {
   assert(timer.stage === 'recording' && timer.recordingFor === 'focus', '选择休息后应进入 recording(focus)')
   timer.startBreak()
   assert(timer.stage === 'break', 'startBreak 后应为 break')
+  assert(timer.taskId === null && timer.taskTitle === '', '进入休息后应清除当前专注任务')
   timer._onBreakFinished()
   assert(timer.stage === 'break' && timer.awaitingBreakChoice, '休息到点后应等待继续休息/记录选择')
   const beforeBreakExtend = timer.totalMs
@@ -119,7 +121,7 @@ try {
 }
 
 console.log('[smoke] 3) 主进程模块加载')
-const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'i18n', 'updater', 'notifications', 'ipc']
+const mainModules = ['db', 'timer', 'mailer', 'auto-mail', 'secret', 'i18n', 'updater', 'notifications', 'automation', 'integrations', 'shortcuts', 'ipc']
 for (const m of mainModules) {
   try {
     require(path.join(appDir, 'main', m))
@@ -218,6 +220,26 @@ try {
   nextResult = { ok: false, error: 'SMTP 失败' }
   await scheduler.processDate('2026-01-04', settings)
   assert(settings.daily_mail_last_error === 'SMTP 失败', '失败原因应持久化')
+
+  const weeklySettings = {
+    daily_mail_enabled: '0',
+    weekly_mail_enabled: '1',
+    weekly_mail_day: String(new Date().getDay()),
+    weekly_mail_time: '00:00',
+    weekly_mail_last_success_week: '',
+    weekly_mail_last_skip_week: ''
+  }
+  const weeklyDbMock = {
+    getAllSettings: () => weeklySettings,
+    getSetting: (key, fallback = '') => weeklySettings[key] ?? fallback,
+    setSetting: (key, value) => { weeklySettings[key] = String(value) }
+  }
+  const weeklyScheduler = new AutoMailScheduler({
+    db: weeklyDbMock,
+    mailer: { sendWeeklyEmail: async () => ({ ok: true }) }
+  })
+  await weeklyScheduler.check()
+  assert(weeklySettings.weekly_mail_last_success_week, '每周总结成功后应记录本周')
   ok('成功、跳过、失败和防重复逻辑正确')
 } catch (e) {
   fail('自动邮件处理分支', e.message)

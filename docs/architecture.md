@@ -1,145 +1,116 @@
 # 桌面 TODO · Electron 架构备忘
 
-> 栈：Electron + 原生 HTML/CSS/JS（无前端框架）+ better-sqlite3 + nodemailer
-> 依赖：`electron`、`better-sqlite3`、`nodemailer`、`electron-builder`（打包）
-
----
+> 技术栈：Electron 31 + 原生 HTML/CSS/JS + better-sqlite3 + nodemailer + electron-updater
+> 当前版本：v0.6.0
 
 ## 1. 进程模型
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ 主进程 (main.js)                                         │
-│  ├─ 窗口管理：主窗口 + 挂件窗口（置顶无边框）               │
-│  ├─ 计时器核心：唯一状态实例（阶段/剩余秒/暂停）            │
-│  ├─ 数据库：better-sqlite3 同步读写（仅主进程）            │
-│  ├─ 邮件：nodemailer 发信                                 │
-│  └─ IPC handler 注册表                                    │
-└───────────────▲─────────────────────────▲────────────────┘
-                │ IPC invoke/handle       │ 窗口间广播 (webContents.send)
-        ┌───────┴────────┐        ┌───────┴────────┐
-        │ 主窗口渲染进程   │        │ 挂件窗口渲染进程 │
-        │ 六屏 SPA        │        │ 进度条 UI       │
-        └────────────────┘        └────────────────┘
-```
+- 主进程负责窗口、计时器、SQLite、邮件、更新、系统通知、开机启动和全局快捷键。
+- 主窗口与挂件窗口通过 preload 白名单调用 IPC。
+- 计时器为唯一主进程实例，状态变化广播到所有窗口。
+- 渲染层不直接访问 Node、SQLite 或文件系统。
 
-**核心决策：计时器放主进程。** 原因：① 挂件/主屏共享同一状态，天然同步；② 渲染进程被回收/窗口最小化不影响计时；③ 窗口间只要广播 `timer:tick` 事件即可。
+## 2. 主要模块
 
-## 2. 窗口配置
-
-### 主窗口
-```js
-new BrowserWindow({
-  width: 420, height: 780, resizable: false,
-  frame: false,            // 无边框（糖果风格自绘头部，需自建拖拽区）
-  backgroundColor: '#FFF8E7',
-  webPreferences: { preload: preload.js, contextIsolation: true }
-})
+```text
+main/
+├─ index.js          # 生命周期、主窗口、挂件、托盘、开机启动
+├─ timer.js          # 计时状态机、任务关联、延长休息
+├─ db.js             # SQLite、任务、记录、设置与统计查询
+├─ ipc.js            # IPC handlers 和跨窗口事件
+├─ auto-mail.js      # 每日与每周自动邮件调度
+├─ mailer.js         # QQ SMTP 邮件正文与发送
+├─ automation.js     # 专注场景、工作软件启动、DND 降级
+├─ shortcuts.js      # 全局自动化快捷键
+├─ integrations.js   # 外部平台适配状态
+├─ notifications.js  # Windows 系统通知
+└─ updater.js        # GitHub Releases 自动更新
 ```
 
-### 挂件窗口（迷你进度条）
-```js
-new BrowserWindow({
-  width: 170, height: 32, resizable: false, frame: false,
-  transparent: true,       // 圆角胶囊需要透明背景
-  alwaysOnTop: true,       // 常驻置顶
-  skipTaskbar: true,       // 不占任务栏
-  webPreferences: { preload: preload.js, contextIsolation: true }
-})
-// 更深的置顶层级（可选）：
-win.setAlwaysOnTop(true, 'screen-saver')
+渲染层：
+
+```text
+renderer/
+├─ css/candy.css          # 基础暗黑青绿设计 token
+├─ css/themes.css         # 主题选择器、任务、排期和洞察共享样式
+├─ css/theme-candy.css    # Page 5 糖果风格
+├─ css/theme-light.css    # Page 8 浅色工作台
+├─ js/views/tasks.js      # 任务、排期、洞察弹窗
+├─ js/views/home.js       # 专注与当前任务
+├─ js/views/record.js     # 记录与自动草稿
+├─ js/views/today.js      # 今日任务、记录、邮件
+├─ js/views/history.js    # 历史与搜索
+└─ js/views/settings.js   # 主题、计时、系统、自动化设置
 ```
 
-## 3. IPC 通道清单
+## 3. 计时状态
 
-### 渲染 → 主进程（invoke/handle）
-| 通道 | 参数 | 返回 | 说明 |
-|---|---|---|---|
-| `timer:start` | `{ minutes }` | state | 开始工作段 |
-| `timer:pause` | – | state | 暂停 |
-| `timer:resume` | – | state | 继续 |
-| `timer:stop` | – | state | 结束并丢弃当前段 |
-| `timer:skip-break` | – | state | 跳过休息 |
-| `record:save` | `{ startedAt, durationMin, content, tag }` | id | 保存工作段记录并进休息（endedAt 由主进程取当前时刻） |
-| `record:get-today` | – | sessions[] + stats | 今日列表 |
-| `record:search` | `{ kw, range }` | sessions[] + stats | 查找页 |
-| `settings:get` | – | 全量 key-value | 启动时拉取 |
-| `settings:set` | `{ key, value }` | ok | 单个写入 |
-| `mail:send` | – | { ok, error? } | 发今日汇总邮件 |
-| `widget:expand` | – | ok | 展开主窗口（挂件双击/点击） |
-| `widget:toggle-top` | `{ top }` | – | 置顶开关 |
-
-### 主进程 → 渲染（webContents.send）
-| 事件 | 载荷 | 说明 |
-|---|---|---|
-| `timer:state` | state 全量 | 任何状态变化/每秒 tick 推送 |
-| `timer:focus-finished` | `{ startedAt }` | 工作段倒计时结束（主屏弹记录填写） |
-| `timer:break-finished` | `{ startedAt, durationMin }` | 休息倒计时结束（主屏弹休息记录填写） |
-
-### 状态对象
 ```js
 state = {
-  stage: 'idle' | 'focus' | 'break',
-  running: boolean,          // false = 暂停
-  phaseInRound: 1..N,        // 本轮第几个工作段
-  totalMs: number,           // 本段总时长
-  remainMs: number,          // 剩余毫秒
-  startedAt: number|null     // 本次开始时间戳（记录填写展示用）
+  stage: 'idle' | 'focus' | 'break' | 'recording',
+  running: boolean,
+  phaseInRound: number,
+  totalMs: number,
+  remainMs: number,
+  startedAt: number|null,
+  recordingFor: 'focus' | 'break' | null,
+  recordingDurationMin: number|null,
+  taskId: number|null,
+  taskTitle: string,
+  taskProject: string,
+  awaitingFocusChoice: boolean,
+  awaitingBreakChoice: boolean
 }
 ```
 
-## 4. 关键实现要点
+- 到点使用 `Date.now()` 与结束时间戳比较，避免 interval 漂移。
+- 专注结束先询问“你累了吗”，休息结束先询问是否继续休息。
+- 实际时长写入 `recordingDurationMin`，提前结束和自动草稿均使用该值。
+- 工作段可携带任务 ID、标题和项目；进入休息后清空。
 
-1. **计时精度**：`setInterval` 每 250ms 读 `Date.now()` 与结束时间戳差值，不累加减法（防漂移）。
-2. **防休眠挂起**：每次 tick 都用 `Date.now()` 与结束时间戳求差值（而非累加），系统休眠/挂起恢复后下一个 tick 自然得到正确剩余值，无需额外监听 `powerMonitor`。
-3. **记录填写阻塞逻辑**：focus 结束 → 主窗口 `show()` + 切到记录视图；`record:save` 前计时器停在 RECORDING 状态。
-4. **SQLite 全部在主进程**：渲染进程绝无直接 DB 访问，全部走 IPC。
-5. **QQ SMTP 配置**：
-   ```js
-   const t = nodemailer.createTransport({
-     host: 'smtp.qq.com', port: 465, secure: true,
-     auth: { user: qq_email, pass: qq_auth_code } // pass 填授权码，非 QQ 密码
-   })
-   ```
-6. **打包**：electron-builder，`extraResources` 不打 native 模块外的数据；better-sqlite3 需 `electron-rebuild` 匹配 Electron ABI；`asarUnpack` 含 better-sqlite3 与 nodemailer。
-7. **无边框拖拽**：头部 `-webkit-app-region: drag`；挂件自定义 mousedown/move 拖动（透明窗口无系统边框）。
+## 4. IPC 分组
 
-## 5. 目录结构（建议）
+- 计时：开始、暂停、继续、结束、延长专注、延长休息、完成记录。
+- 任务：列表、创建、完成/重开、排期、统计。
+- 记录：保存、休息记录、手动记录、编辑、今日、搜索。
+- 设置：读取、单项保存、批量保存。
+- 邮件：手动发送、自动邮件状态。
+- 自动化：专注场景事件、全局快捷键事件。
+- 集成：平台列表与连接入口占位。
+- 窗口：最小化、拖动、关闭到托盘、挂件展开与置顶。
 
-```
-desktop-todo/
-├─ package.json
-├─ main/
-│  ├─ index.js          # 入口，窗口/生命周期
-│  ├─ timer.js          # 计时器核心（唯一状态）
-│  ├─ db.js             # SQLite 封装
-│  ├─ mailer.js         # nodemailer
-│  └─ ipc.js            # 全部 IPC handler 注册
-├─ preload.js           # contextBridge 暴露 api
-├─ renderer/
-│  ├─ index.html        # 六屏 SPA（view 切换）
-│  ├─ widget.html       # 挂件
-│  ├─ css/candy.css     # 糖果风设计 token（单一来源）
-│  └─ js/  (views/, store.js)
-└─ docs/                # spec.md / database.md / 本文件
-```
+## 5. 数据与统计
 
-## 6. 设计 token（糖果风，与设计稿对齐）
+- `sessions.task_id` 关联 `tasks.id`。
+- 项目投入通过任务项目聚合工作段分钟数。
+- 预估偏差通过任务预估分钟与实际聚合分钟比较。
+- 今日任务=所有未完成任务+当天完成任务。
+- 旧数据库启动时自动补充新字段。
 
-```css
-:root {
-  --cream: #FFF8E7;   /* 页面底 */
-  --card: #FFFFFF;
-  --ink: #4A2F1A;     /* 主文字（暖棕黑） */
-  --ink-2: #8C6F4A;   /* 次文字 */
-  --line: #1A1A23;    /* 2px 边框 */
-  --pink: #FFB6C1;    --pink-soft: #FFF0F3;
-  --lav: #C9B6FF;     --lav-soft: #F0ECFF;
-  --butter: #FFE066;  --butter-soft: #FFF8E7;
-  --mint: #A8E6CF;    --mint-soft: #F0FBF6;
-  /* 硬阴影：0 5px 0 var(--line) */
-  --radius-card: 45px; --radius-btn: 14px; --radius-field: 24px;
-}
-```
+## 6. 主题
 
-> 字体说明：设计稿用 `Outfit`/`Inter` 作展示字体，但项目未打包字体文件、也未写 `@font-face`，实际回退到系统字体（Windows 上为 `PingFang SC`/`Microsoft YaHei`）。若需严格还原设计稿，需将字体文件放入 `assets/` 并补充 `@font-face`。
+- `dark`：暗黑青绿，底部导航。
+- `candy`：糖果风格，底部导航。
+- `light`：浅色工作台，左侧竖向导航。
+- 主题保存到 `settings.ui_style`，切换后立即应用。
+- 挂件同步主题；系统通知保持 Windows 原生样式。
+
+## 7. 自动化
+
+- 自动记录草稿默认只填充表单，不静默保存。
+- 自动标签根据任务标题规则推断，项目随任务记录关联。
+- 专注场景可启动用户配置的本地 EXE。
+- Windows 勿扰模式无稳定公开接口，只提示用户开启专注助手。
+- 全局快捷键注册失败时保留应用内快捷键。
+- 每周总结统计最近 7 天，失败或跳过状态保存在 settings。
+
+## 8. 外部同步
+
+GitHub、Jira、Notion、Todoist、日历共用 `integrations.js` 适配入口。真实 OAuth、令牌存储和双向同步尚未启用，界面明确显示“未配置”。
+
+## 9. 构建与更新
+
+- 安装版：NSIS + `electron-updater`。
+- 便携版：完整包 + zstd 差分补丁回退。
+- GitHub Release 需上传安装包、便携版、blockmap 和 `latest.yml`。
+- 当前 EXE 未代码签名，可能出现 SmartScreen 提示。

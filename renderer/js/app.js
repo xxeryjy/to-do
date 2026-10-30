@@ -66,6 +66,8 @@
       this.bindConfirmDialog()
       this.bindFatigueDialog()
       this.bindBreakExtendDialog()
+      this.bindFocusScene()
+      this.bindGlobalShortcutEvents()
       this.bindGlobalShortcuts()
       this.bindAutoMailStatus()
       this.bindUpdater()
@@ -158,6 +160,45 @@
 
       if (window.todo.onBreakAwaitingChoice) {
         window.todo.onBreakAwaitingChoice((payload) => this.showBreakPrompt(payload))
+      }
+    },
+
+    bindFocusScene() {
+      if (!window.todo.onFocusScene) return
+      window.todo.onFocusScene((payload = {}) => {
+        const messages = []
+        if (payload.dndRequested && !payload.dndSupported) {
+          messages.push(window.I18n.t('automation.dndUnavailable'))
+        }
+        if (payload.launched && payload.launched.length) {
+          messages.push(window.I18n.t('automation.appsLaunched', { count: payload.launched.length }))
+        }
+        if (payload.failed && payload.failed.length) {
+          messages.push(window.I18n.t('automation.appsFailed', { count: payload.failed.length }))
+        }
+        if (messages.length) this.toast(messages.join(' · '))
+      })
+    },
+
+    bindGlobalShortcutEvents() {
+      if (!window.todo.onAutomationShortcut) return
+      window.todo.onAutomationShortcut((action) => this.handleAutomationShortcut(action))
+    },
+
+    handleAutomationShortcut(action) {
+      if (window.Store.settings.shortcuts_enabled === '0') return
+      const now = Date.now()
+      if (this._lastShortcutAction === action && now - (this._lastShortcutAt || 0) < 350) return
+      this._lastShortcutAction = action
+      this._lastShortcutAt = now
+
+      if (action === 'extendBreak' && !document.getElementById('breakExtendPanel').hidden) {
+        document.getElementById('btnBreakExtend').click()
+      } else if (action === 'finishRecord' && this.current === 'record') {
+        document.getElementById('btnSaveRecord').click()
+      } else if (action === 'nextRound') {
+        if (this.current === 'record') document.getElementById('btnSaveRecord').click()
+        else if (this.current === 'home' && window.Store.timer?.stage === 'idle') window.HomeView.toggleTimer()
       }
     },
 
@@ -289,6 +330,25 @@
           return
         }
 
+        const shortcutsEnabled = window.Store.settings.shortcuts_enabled !== '0'
+        if (shortcutsEnabled && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+          if (!editing && event.key.toLowerCase() === 'b' && !document.getElementById('breakExtendPanel').hidden) {
+            event.preventDefault()
+            this.handleAutomationShortcut('extendBreak')
+            return
+          }
+          if (event.key === 'Enter' && this.current === 'record') {
+            event.preventDefault()
+            this.handleAutomationShortcut('finishRecord')
+            return
+          }
+          if (event.key.toLowerCase() === 'n' && !editing) {
+            event.preventDefault()
+            this.handleAutomationShortcut('nextRound')
+            return
+          }
+        }
+
         if (!editing && event.key === '/') {
           const search = document.getElementById('histSearch')
           if (search) {
@@ -317,6 +377,12 @@
           this.toast(window.I18n.t('toast.autoMailSuccess', { date }))
         } else if (payload.type === 'error') {
           this.toast(window.I18n.t('toast.autoMailError', {
+            error: payload.error || window.I18n.t('toast.autoMailConfigError')
+          }))
+        } else if (payload.type === 'weekly-success') {
+          this.toast(window.I18n.t('toast.weeklyMailSuccess'))
+        } else if (payload.type === 'weekly-error') {
+          this.toast(window.I18n.t('toast.weeklyMailError', {
             error: payload.error || window.I18n.t('toast.autoMailConfigError')
           }))
         }

@@ -43,7 +43,10 @@
 
   async function load() {
     setTodayLabel()
-    const data = await window.todo.recordGetToday()
+    const [data] = await Promise.all([
+      window.todo.recordGetToday(),
+      window.TasksView ? window.TasksView.load() : Promise.resolve()
+    ])
     const { sessions, stats } = data
 
     $('sumSegs').textContent = stats.segs || 0
@@ -75,12 +78,15 @@
     const tag = session.tag
       ? `<span class="tag-pill ${tagClass(session.tag)}">${escapeHtml(window.I18n.tagLabel(session.tag))}</span>`
       : ''
+    const task = session.task_title
+      ? `<span class="tag-pill">${escapeHtml(session.task_title)}</span>`
+      : ''
 
     item.innerHTML = `
       <span class="record-accent" style="background:${accent}"></span>
       <div class="record-body">
         <p>${escapeHtml(session.content || '')}</p>
-        <div class="record-meta"><span>${window.I18n.t('record.minutes', { count: session.duration_min })}</span>${tag}</div>
+        <div class="record-meta"><span>${window.I18n.t('record.minutes', { count: session.duration_min })}</span>${task}${tag}</div>
       </div>
       <span class="record-time">${start}</span>
     `

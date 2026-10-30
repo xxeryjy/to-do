@@ -24,6 +24,10 @@ class Timer extends EventEmitter {
     this.startedAt = null         // 本次开始时间戳（记录填写展示用）
     this.breakStartedAt = null    // 休息开始时间戳（写库用）
     this.recordingFor = null      // 当前 RECORDING 阶段属于 'focus' 还是 'break'
+    this.taskId = null             // 当前专注关联的任务
+    this.taskTitle = ''
+    this.taskProject = ''
+    this.recordingDurationMin = null
     this.awaitingFocusChoice = false // 专注到点后，等待用户选择休息或延长
     this.awaitingBreakChoice = false // 休息到点后，等待用户选择继续休息或记录
     this.endAt = null             // 计时结束时间戳
@@ -80,9 +84,12 @@ class Timer extends EventEmitter {
   }
 
   /** 开始工作段：仅允许从空闲状态进入 */
-  startFocus(minutes) {
+  startFocus(minutes, taskId = null, taskTitle = '', taskProject = '') {
     if (this.stage !== STAGE.IDLE) return this.snapshot()
     if (minutes) this.setFocusDuration(minutes)
+    this.taskId = taskId || null
+    this.taskTitle = String(taskTitle || '')
+    this.taskProject = String(taskProject || '')
     this._beginFocus()
     return this.snapshot()
   }
@@ -93,6 +100,7 @@ class Timer extends EventEmitter {
     this.stage = STAGE.FOCUS
     this.running = true
     this.recordingFor = null
+    this.recordingDurationMin = null
     this.awaitingFocusChoice = false
     this.awaitingBreakChoice = false
     this.totalMs = this.currentDurationMs()
@@ -124,6 +132,9 @@ class Timer extends EventEmitter {
     this._stopTicker()
     this.awaitingFocusChoice = false
     this.awaitingBreakChoice = false
+    this.taskId = null
+    this.taskTitle = ''
+    this.taskProject = ''
     this.stage = STAGE.BREAK
     this.running = true
     this.totalMs = this.currentDurationMs()
@@ -156,6 +167,7 @@ class Timer extends EventEmitter {
     this.awaitingBreakChoice = false
     this.stage = STAGE.RECORDING
     this.recordingFor = 'focus'
+    this.recordingDurationMin = Math.max(1, Math.round(this.totalMs / 60000))
     this.emitState()
     this.emit('focusFinished', {
       startedAt: this.startedAt,
@@ -188,6 +200,7 @@ class Timer extends EventEmitter {
     const elapsedMs = Math.max(0, this.totalMs - this.remainMs)
     this.stage = STAGE.RECORDING
     this.recordingFor = 'focus'
+    this.recordingDurationMin = Math.max(1, Math.round(elapsedMs / 60000))
     this.emitState()
     this.emit('focusFinished', {
       startedAt: this.startedAt,
@@ -200,6 +213,10 @@ class Timer extends EventEmitter {
   startBreak() {
     this.awaitingFocusChoice = false
     this.awaitingBreakChoice = false
+    this.taskId = null
+    this.taskTitle = ''
+    this.taskProject = ''
+    this.recordingDurationMin = null
     this.stage = STAGE.BREAK
     this.running = true
     this.totalMs = this.currentDurationMs()
@@ -237,6 +254,7 @@ class Timer extends EventEmitter {
     this.awaitingBreakChoice = false
     this.stage = STAGE.RECORDING
     this.recordingFor = 'break'
+    this.recordingDurationMin = Math.max(1, Math.round(this.totalMs / 60000))
     this.emitState()
     this.emit('breakFinished', {
       startedAt: this.breakStartedAt,
@@ -268,6 +286,7 @@ class Timer extends EventEmitter {
     const elapsedMs = Math.max(0, this.totalMs - this.remainMs)
     this.stage = STAGE.RECORDING
     this.recordingFor = 'break'
+    this.recordingDurationMin = Math.max(1, Math.round(elapsedMs / 60000))
     this.emitState()
     this.emit('breakFinished', {
       startedAt: this.breakStartedAt,
@@ -281,6 +300,9 @@ class Timer extends EventEmitter {
    * 注意：只在休息记录流程里调用（skipBreak 走 skipBreak）
    */
   startNextFocus() {
+    this.taskId = null
+    this.taskTitle = ''
+    this.taskProject = ''
     this._advanceRound()
     this._beginFocus()
   }
@@ -336,6 +358,10 @@ class Timer extends EventEmitter {
       remainMs: this.remainMs,
       startedAt: this.startedAt,
       recordingFor: this.recordingFor,
+      taskId: this.taskId,
+      taskTitle: this.taskTitle,
+      taskProject: this.taskProject,
+      recordingDurationMin: this.recordingDurationMin,
       awaitingFocusChoice: this.awaitingFocusChoice,
       awaitingBreakChoice: this.awaitingBreakChoice,
       delayFocusMin: Math.max(1, Math.min(120, parseInt(this.settings.delay_focus_min || 10, 10))),

@@ -17,6 +17,22 @@ function init() {
   db.pragma('journal_mode = WAL')
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      title        TEXT    NOT NULL,
+      status       TEXT    NOT NULL DEFAULT 'open',
+      created_at   TEXT    NOT NULL,
+      completed_at TEXT,
+      estimate_min INTEGER,
+      project      TEXT,
+      scheduled_start TEXT,
+      scheduled_end   TEXT,
+      source       TEXT NOT NULL DEFAULT 'local',
+      external_id  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
+
     CREATE TABLE IF NOT EXISTS sessions (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       type         TEXT    NOT NULL DEFAULT 'focus',
@@ -24,7 +40,8 @@ function init() {
       ended_at     TEXT    NOT NULL,
       duration_min INTEGER NOT NULL,
       content      TEXT,
-      tag          TEXT
+      tag          TEXT,
+      task_id      INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
     CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(type);
@@ -34,6 +51,26 @@ function init() {
       value TEXT NOT NULL
     );
   `)
+
+  // 旧数据库迁移：为已有记录表补充任务关联字段
+  const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all()
+  if (!sessionColumns.some((column) => column.name === 'task_id')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN task_id INTEGER')
+  }
+  const taskColumns = db.prepare('PRAGMA table_info(tasks)').all()
+  const taskMigrations = {
+    estimate_min: 'INTEGER',
+    project: 'TEXT',
+    scheduled_start: 'TEXT',
+    scheduled_end: 'TEXT',
+    source: "TEXT NOT NULL DEFAULT 'local'",
+    external_id: 'TEXT'
+  }
+  for (const [column, definition] of Object.entries(taskMigrations)) {
+    if (!taskColumns.some((item) => item.name === column)) {
+      db.exec(`ALTER TABLE tasks ADD COLUMN ${column} ${definition}`)
+    }
+  }
 
   // 默认设置（仅缺省时插入）
   const defaults = {
@@ -58,12 +95,26 @@ function init() {
     launch_at_login: '0', // 开机启动默认关闭
     notifications_enabled: '1', // 计时结束系统通知
     notification_sound_enabled: '1', // 计时结束提示音
-    schema_version: '2'
+    automation_draft_enabled: '1', // 专注结束后生成可编辑记录草稿
+    automation_task_mapping_enabled: '1', // 从任务带出标签与项目
+    shortcuts_enabled: '1', // 应用内自动化快捷键
+    focus_scene_enabled: '0', // 进入专注时执行场景动作
+    focus_scene_dnd_enabled: '0', // 尝试切换 Windows 勿扰模式
+    focus_launch_apps_enabled: '0', // 自动启动指定工作软件
+    focus_launch_apps: '[]', // JSON 数组，保存本地可执行文件路径
+    weekly_mail_enabled: '0',
+    weekly_mail_day: '5', // 0=周日，1=周一 … 6=周六
+    weekly_mail_time: '18:30',
+    weekly_mail_last_success_week: '',
+    weekly_mail_last_skip_week: '',
+    weekly_mail_last_error: '',
+    schema_version: '3'
   }
   const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
   for (const [k, v] of Object.entries(defaults)) {
     insert.run(k, v)
   }
+  db.prepare("UPDATE settings SET value = '3' WHERE key = 'schema_version'").run()
 }
 
 /* ---------- sessions ---------- */
@@ -72,17 +123,18 @@ function init() {
  * 保存一条工作段记录（focusFinished → 用户填写 → 保存）
  * @returns {number} 新记录 id
  */
-function saveSession({ startedAt, endedAt, durationMin, content, tag }) {
+function saveSession({ startedAt, endedAt, durationMin, content, tag, taskId }) {
   const stmt = db.prepare(`
-    INSERT INTO sessions (type, started_at, ended_at, duration_min, content, tag)
-    VALUES ('focus', ?, ?, ?, ?, ?)
+    INSERT INTO sessions (type, started_at, ended_at, duration_min, content, tag, task_id)
+    VALUES ('focus', ?, ?, ?, ?, ?, ?)
   `)
   const info = stmt.run(
     new Date(startedAt).toISOString(),
     new Date(endedAt).toISOString(),
     durationMin,
     content || null,
-    tag || null
+    tag || null,
+    taskId || null
   )
   return info.lastInsertRowid
 }
@@ -142,10 +194,12 @@ function updateSession(id, { content, tag, durationMin }) {
 /** 查询今日记录（focus 且本地日期 = 今天） */
 function getTodaySessions() {
   return db.prepare(`
-    SELECT * FROM sessions
-    WHERE type = 'focus'
-      AND date(started_at, 'localtime') = date('now', 'localtime')
-    ORDER BY started_at DESC
+    SELECT s.*, t.title AS task_title
+    FROM sessions s
+    LEFT JOIN tasks t ON t.id = s.task_id
+    WHERE s.type = 'focus'
+      AND date(s.started_at, 'localtime') = date('now', 'localtime')
+    ORDER BY s.started_at DESC
   `).all()
 }
 
@@ -188,6 +242,28 @@ function getFocusStatsByDate(dateKey) {
     WHERE type = 'focus'
       AND date(started_at, 'localtime') = date(?)
   `).get(dateKey)
+}
+
+/** 查询日期区间内的工作记录，供每周汇总使用（含起止日期） */
+function getFocusSessionsBetween(startDateKey, endDateKey) {
+  return db.prepare(`
+    SELECT * FROM sessions
+    WHERE type = 'focus'
+      AND date(started_at, 'localtime') >= date(?)
+      AND date(started_at, 'localtime') <= date(?)
+    ORDER BY started_at ASC
+  `).all(startDateKey, endDateKey)
+}
+
+function getFocusStatsBetween(startDateKey, endDateKey) {
+  return db.prepare(`
+    SELECT COUNT(*) AS segs,
+           COALESCE(SUM(duration_min), 0) AS minutes
+    FROM sessions
+    WHERE type = 'focus'
+      AND date(started_at, 'localtime') >= date(?)
+      AND date(started_at, 'localtime') <= date(?)
+  `).get(startDateKey, endDateKey)
 }
 
 /**
@@ -269,6 +345,101 @@ function searchSessions(kw = '', range = 'all') {
   return { rows, stats }
 }
 
+/* ---------- tasks ---------- */
+
+/** 新建一个只有名称的扁平任务 */
+function createTask(input) {
+  const payload = typeof input === 'string' ? { title: input } : (input || {})
+  const value = String(payload.title || '').trim()
+  if (!value) throw new Error('Task title is required')
+  const project = String(payload.project || '').trim() || null
+  const estimateMin = Math.max(1, Math.min(1440, parseInt(payload.estimateMin, 10) || 0)) || null
+  const now = new Date().toISOString()
+  const info = db.prepare(`
+    INSERT INTO tasks (title, status, created_at, estimate_min, project)
+    VALUES (?, 'open', ?, ?, ?)
+  `).run(value, now, estimateMin, project)
+  return getTaskById(info.lastInsertRowid)
+}
+
+function getTaskById(id) {
+  return db.prepare(`
+    SELECT t.*, COALESCE(SUM(CASE WHEN s.type = 'focus' THEN s.duration_min ELSE 0 END), 0) AS focus_minutes
+    FROM tasks t
+    LEFT JOIN sessions s ON s.task_id = t.id
+    WHERE t.id = ?
+    GROUP BY t.id
+  `).get(id)
+}
+
+/** 今日任务：所有未完成任务 + 今天完成的任务。 */
+function getTodayTasks() {
+  return db.prepare(`
+    SELECT t.*,
+           COALESCE(SUM(CASE WHEN s.type = 'focus' THEN s.duration_min ELSE 0 END), 0) AS focus_minutes,
+           MAX(CASE WHEN s.type = 'focus' THEN s.ended_at END) AS last_focused_at
+    FROM tasks t
+    LEFT JOIN sessions s ON s.task_id = t.id
+    WHERE t.status = 'open'
+       OR date(t.completed_at, 'localtime') = date('now', 'localtime')
+    GROUP BY t.id
+    ORDER BY CASE t.status WHEN 'open' THEN 0 ELSE 1 END, t.created_at DESC
+  `).all()
+}
+
+/** 勾选完成或重新打开任务 */
+function setTaskCompleted(id, completed) {
+  const status = completed ? 'done' : 'open'
+  const completedAt = completed ? new Date().toISOString() : null
+  const info = db.prepare(`
+    UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?
+  `).run(status, completedAt, id)
+  return info.changes > 0 ? getTaskById(id) : null
+}
+
+/** 将任务拖入某一天的某个时间段 */
+function setTaskSchedule(id, scheduledStart, scheduledEnd) {
+  const start = scheduledStart ? new Date(scheduledStart) : null
+  const end = scheduledEnd ? new Date(scheduledEnd) : null
+  if (start && Number.isNaN(start.getTime())) throw new Error('Invalid schedule start')
+  if (end && Number.isNaN(end.getTime())) throw new Error('Invalid schedule end')
+  if (start && end && end <= start) throw new Error('Schedule end must be after start')
+  const info = db.prepare(`
+    UPDATE tasks SET scheduled_start = ?, scheduled_end = ? WHERE id = ?
+  `).run(start ? start.toISOString() : null, end ? end.toISOString() : null, id)
+  return info.changes > 0 ? getTaskById(id) : null
+}
+
+/** 按项目汇总本月专注投入 */
+function getProjectStats() {
+  return db.prepare(`
+    SELECT COALESCE(NULLIF(TRIM(t.project), ''), 'Unassigned') AS project,
+           COALESCE(SUM(s.duration_min), 0) AS minutes,
+           COUNT(s.id) AS sessions,
+           COUNT(DISTINCT t.id) AS tasks
+    FROM sessions s
+    JOIN tasks t ON t.id = s.task_id
+    WHERE s.type = 'focus'
+      AND date(s.started_at, 'localtime') >= date('now', 'localtime', 'start of month')
+    GROUP BY COALESCE(NULLIF(TRIM(t.project), ''), 'Unassigned')
+    ORDER BY minutes DESC
+  `).all()
+}
+
+/** 任务预估与实际投入偏差 */
+function getEstimateBias() {
+  return db.prepare(`
+    SELECT t.id, t.title, t.project, t.estimate_min,
+           COALESCE(SUM(s.duration_min), 0) AS actual_min
+    FROM tasks t
+    JOIN sessions s ON s.task_id = t.id AND s.type = 'focus'
+    WHERE t.estimate_min IS NOT NULL
+      AND date(s.started_at, 'localtime') >= date('now', 'localtime', 'start of month')
+    GROUP BY t.id
+    ORDER BY ABS(COALESCE(SUM(s.duration_min), 0) - t.estimate_min) DESC
+  `).all()
+}
+
 /* ---------- settings ---------- */
 
 function getSetting(key, fallback = null) {
@@ -313,9 +484,18 @@ module.exports = {
   getTodayBreaks,
   getFocusSessionsByDate,
   getFocusStatsByDate,
+  getFocusSessionsBetween,
+  getFocusStatsBetween,
   getTodayStreak,
   localDateKey,
   searchSessions,
+  createTask,
+  getTaskById,
+  getTodayTasks,
+  setTaskCompleted,
+  setTaskSchedule,
+  getProjectStats,
+  getEstimateBias,
   getSetting,
   setSetting,
   setSettings,

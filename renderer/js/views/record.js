@@ -24,6 +24,7 @@
   let draft = ''
   let draftKey = ''
   let autoSaveTimer = null
+  let autoDraftAppliedKey = ''
 
   function isManual() {
     return !!(window.recordManual && window.recordManual.active)
@@ -46,7 +47,32 @@
       draftKey = key
       draft = ''
       selectedTag = null
+      autoDraftAppliedKey = ''
       $('recSavedAt').textContent = window.I18n.t('record.autoSave.waiting')
+    }
+  }
+
+  function inferTaskTag(title) {
+    if (/代码|开发|修复|bug|code|feature|release|发布/i.test(title)) return '写代码'
+    if (/会议|meeting|同步|sync/i.test(title)) return '开会'
+    if (/学习|文档|写作|笔记|read|study|writing/i.test(title)) return '学习'
+    return null
+  }
+
+  function applyAutomationDraft(state, isBreak, durationMin) {
+    if (isBreak || !state.taskTitle) return
+    if (autoDraftAppliedKey === draftKey) return
+    autoDraftAppliedKey = draftKey
+
+    const settings = window.Store.settings || {}
+    if (settings.automation_draft_enabled === '1' && !draft) {
+      draft = window.I18n.t('automation.draft.content', {
+        title: state.taskTitle,
+        minutes: durationMin
+      })
+    }
+    if (settings.automation_task_mapping_enabled === '1' && !selectedTag) {
+      selectedTag = inferTaskTag(state.taskTitle)
     }
   }
 
@@ -89,13 +115,19 @@
     $('recInput').placeholder = window.I18n.t(isBreak ? 'record.placeholder.break' : 'record.placeholder.focus')
     $('btnSaveRecord').textContent = window.I18n.t(isBreak ? 'record.action.saveNext' : 'record.action.saveBreak')
     $('btnGiveup').textContent = window.I18n.t('record.action.giveup')
+    const taskContext = $('recTaskContext')
+    taskContext.hidden = isBreak || !state.taskTitle
+    $('recTaskTitle').textContent = isBreak
+      ? ''
+      : [state.taskTitle, state.taskProject].filter(Boolean).join(' · ')
 
     const startedAt = isBreak
       ? (window.lastBreakStartedAt || state.startedAt || Date.now())
       : (window.lastFocusStartedAt || state.startedAt || Date.now())
     const startDate = new Date(startedAt)
     const now = new Date()
-    const stateDuration = state.totalMs > 0 ? Math.round(state.totalMs / 60000) : 1
+    const stateDuration = state.recordingDurationMin
+      || (state.totalMs > 0 ? Math.round(state.totalMs / 60000) : 1)
     const durMin = isBreak
       ? (window.lastBreakDurationMin || stateDuration)
       : (window.lastFocusDurationMin || stateDuration)
@@ -104,6 +136,7 @@
     $('recEnd').textContent = formatHM(now)
     $('recDur').textContent = window.I18n.t('record.minutes', { count: durMin })
 
+    applyAutomationDraft(state, isBreak, durMin)
     renderTags(isBreak ? TAGS_BREAK : TAGS_FOCUS)
     $('recInput').value = draft
     updateCount()
@@ -118,6 +151,7 @@
     $('btnGiveup').hidden = false
     $('btnRecClose').disabled = false
     document.querySelector('.record-actions').classList.remove('single')
+    $('recTaskContext').hidden = true
 
     setHeader(window.I18n.t('record.title.add'))
     $('recEyebrow').textContent = window.I18n.t('record.eyebrow.manual')
@@ -146,6 +180,7 @@
     $('btnGiveup').hidden = false
     $('btnRecClose').disabled = false
     document.querySelector('.record-actions').classList.remove('single')
+    $('recTaskContext').hidden = true
 
     setHeader(window.I18n.t('record.title.edit'))
     $('recEyebrow').textContent = window.I18n.t(record.type === 'break' ? 'record.eyebrow.break' : 'record.eyebrow.focus')
@@ -194,6 +229,7 @@
     draft = ''
     selectedTag = null
     draftKey = ''
+    autoDraftAppliedKey = ''
     $('recInput').value = ''
     $('recSavedAt').textContent = window.I18n.t('record.autoSave.waiting')
     updateCount()
@@ -257,7 +293,7 @@
     const state = window.Store.timer
     if (mode === 'break') {
       const startedAt = window.lastBreakStartedAt || state.startedAt || Date.now()
-      const savedDuration = window.lastBreakDurationMin || Math.max(1, Math.round((Date.now() - startedAt) / 60000))
+      const savedDuration = state.recordingDurationMin || window.lastBreakDurationMin || Math.max(1, Math.round((Date.now() - startedAt) / 60000))
       const result = await window.todo.recordSaveBreak({
         startedAt,
         durationMin: savedDuration,
@@ -268,13 +304,14 @@
       window.App.toast(window.I18n.t('record.toast.breakSaved'))
     } else {
       const startedAt = window.lastFocusStartedAt || state.startedAt || Date.now()
-      const savedDuration = window.lastFocusDurationMin
+      const savedDuration = state.recordingDurationMin || window.lastFocusDurationMin
         || (state.totalMs > 0 ? Math.round(state.totalMs / 60000) : 1)
       const result = await window.todo.recordSave({
         startedAt,
         durationMin: savedDuration,
         content,
-        tag: selectedTag
+        tag: selectedTag,
+        taskId: state.taskId || null
       })
       window.Store.applyTimerState(result.state)
       window.App.toast(window.I18n.t('record.toast.focusSaved'))

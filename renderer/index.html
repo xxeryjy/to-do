@@ -42,6 +42,10 @@
           <div class="timer-time" id="homeTime">25:00</div>
           <p class="timer-tagline" id="homeMode">Ready to start</p>
         </div>
+        <div class="active-task-context" id="homeTaskContext" hidden>
+          <span data-i18n="tasks.current">Current task</span>
+          <b id="homeTaskTitle"></b>
+        </div>
         <div class="progress-track">
           <div class="progress-fill" id="homeProgressFill"></div>
         </div>
@@ -123,6 +127,11 @@
           <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
         </div>
       </header>
+
+      <div class="record-task-context" id="recTaskContext" hidden>
+        <span data-i18n="tasks.recordContext">Task</span>
+        <b id="recTaskTitle"></b>
+      </div>
 
       <div class="record-times record-summary">
         <div class="summary-item">
@@ -208,6 +217,15 @@
         </div>
       </section>
 
+      <div class="section-heading task-section-heading">
+        <h2 data-i18n="tasks.title">Today's tasks</h2>
+        <div class="task-section-actions">
+          <button class="text-button" id="btnOpenPlanner" type="button" data-i18n="tasks.planDay">Plan day</button>
+          <button class="text-button" id="btnAddTask" type="button" data-i18n="tasks.add">Add task</button>
+        </div>
+      </div>
+      <div class="task-stack" id="todayTaskList"></div>
+
       <div class="section-heading">
         <h2 data-i18n="today.recent">Recent records</h2>
         <button class="text-button" id="btnViewAllToday" type="button" data-i18n="today.viewAll">View all</button>
@@ -255,7 +273,7 @@
         <div class="email-editor" id="emailEditor">
           <label class="field">
             <span data-i18n="settings.email.address">Email address</span>
-            <input id="setEmail" type="email" placeholder="user@qq.com" autocomplete="off" />
+            <input id="setEmail" type="email" placeholder="QQ email" autocomplete="off" />
           </label>
           <label class="field">
             <span data-i18n="settings.email.auth">SMTP password</span>
@@ -304,6 +322,36 @@
             <input id="setWidgetPlay" type="checkbox" />
             <span></span>
           </label>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <h2 data-i18n="settings.integrations">Sync & connections</h2>
+      </div>
+      <div class="integration-list" id="integrationList"></div>
+
+      <div class="section-heading">
+        <h2 data-i18n="automation.settings.title">Automation</h2>
+      </div>
+      <div class="setting-card compact-list">
+        <div class="switch-row"><span data-i18n="automation.settings.draft">Generate record draft</span><label class="toggle"><input id="setAutomationDraft" type="checkbox" /><span></span></label></div>
+        <div class="switch-row"><span data-i18n="automation.settings.mapping">Auto tags and project</span><label class="toggle"><input id="setAutomationMapping" type="checkbox" /><span></span></label></div>
+        <div class="switch-row"><span data-i18n="automation.settings.scene">Focus scene</span><label class="toggle"><input id="setFocusScene" type="checkbox" /><span></span></label></div>
+        <div class="switch-row"><span data-i18n="automation.settings.dnd">Try to enable Do Not Disturb</span><label class="toggle"><input id="setFocusDnd" type="checkbox" /><span></span></label></div>
+        <div class="switch-row"><span data-i18n="automation.settings.launchApps">Launch work apps</span><label class="toggle"><input id="setLaunchApps" type="checkbox" /><span></span></label></div>
+        <div class="switch-row"><span data-i18n="automation.settings.shortcuts">Automation shortcuts</span><label class="toggle"><input id="setShortcutsEnabled" type="checkbox" /><span></span></label></div>
+      </div>
+      <div class="setting-card automation-path-card">
+        <label class="field">
+          <span data-i18n="automation.settings.appPaths">App paths (one per line)</span>
+          <textarea id="focusLaunchApps" rows="3" data-i18n-placeholder="automation.settings.appPathsPlaceholder" placeholder="C:\Path\to\app.exe"></textarea>
+        </label>
+      </div>
+      <div class="setting-card weekly-mail-card">
+        <div class="switch-row"><span data-i18n="automation.settings.weekly">Weekly email summary</span><label class="toggle"><input id="setWeeklyMail" type="checkbox" /><span></span></label></div>
+        <div class="weekly-time-row">
+          <select id="setWeeklyMailDay" aria-label="Weekly summary day" data-i18n-aria-label="automation.settings.weeklyDay"><option value="1" data-i18n="day.mon">Monday</option><option value="2" data-i18n="day.tue">Tuesday</option><option value="3" data-i18n="day.wed">Wednesday</option><option value="4" data-i18n="day.thu">Thursday</option><option value="5" data-i18n="day.fri">Friday</option><option value="6" data-i18n="day.sat">Saturday</option><option value="0" data-i18n="day.sun">Sunday</option></select>
+          <input id="setWeeklyMailTime" type="time" value="18:30" />
         </div>
       </div>
 
@@ -368,6 +416,7 @@
           <p data-i18n="app.historySubtitle">Every focus session lives here.</p>
         </div>
         <div class="header-actions no-drag">
+          <button class="text-button" id="btnOpenInsights" type="button" data-i18n="insights.open">Insights</button>
           <span class="count-pill" id="historyCount">Total 0</span>
           <button class="icon-button win-min" type="button" title="Minimize" data-i18n-title="common.minimize" data-i18n-aria-label="common.minimize">−</button>
           <button class="icon-button win-close" type="button" title="Close to tray" data-i18n-title="common.closeToTray" data-i18n-aria-label="common.closeToTray">×</button>
@@ -418,6 +467,59 @@
       </div>
     </div>
 
+    <div class="task-overlay" id="taskDialog" role="dialog" aria-modal="true" aria-labelledby="taskDialogTitle">
+      <form class="task-panel" id="taskForm">
+        <span class="eyebrow" data-i18n="tasks.dialog.eyebrow">Small first step</span>
+        <h2 id="taskDialogTitle" data-i18n="tasks.dialog.title">New task</h2>
+        <p data-i18n="tasks.dialog.subtitle">Only the task name is needed.</p>
+        <label class="field task-title-field">
+          <span data-i18n="tasks.input.label">Task name</span>
+          <input id="taskTitleInput" type="text" maxlength="120" data-i18n-placeholder="tasks.input.placeholder" placeholder="What do you want to finish?" autocomplete="off" />
+        </label>
+        <div class="task-detail-grid">
+          <label class="field task-title-field">
+            <span data-i18n="tasks.input.project">Project</span>
+            <input id="taskProjectInput" type="text" maxlength="80" data-i18n-placeholder="tasks.input.projectPlaceholder" placeholder="Optional" autocomplete="off" />
+          </label>
+          <label class="field task-title-field">
+            <span data-i18n="tasks.input.estimate">Estimate (min)</span>
+            <input id="taskEstimateInput" type="number" min="1" max="1440" data-i18n-placeholder="tasks.input.estimatePlaceholder" placeholder="Optional" />
+          </label>
+        </div>
+        <div class="task-form-actions">
+          <button class="secondary-button" id="btnTaskCancel" type="button" data-i18n="tasks.action.cancel">Cancel</button>
+          <button class="primary-button" id="btnTaskCreate" type="submit" data-i18n="tasks.action.add">Add to today</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="planning-overlay" id="plannerDialog" role="dialog" aria-modal="true" aria-labelledby="plannerTitle">
+      <div class="planning-panel">
+        <span class="eyebrow" data-i18n="tasks.planner.eyebrow">Time blocks</span>
+        <h2 id="plannerTitle" data-i18n="tasks.planner.title">Plan your day</h2>
+        <p data-i18n="tasks.planner.subtitle">Drag a task onto a time slot.</p>
+        <div class="planner-task-tray" id="plannerTaskTray"></div>
+        <div class="planner-grid" id="plannerGrid"></div>
+        <button class="secondary-button planner-close" id="btnPlannerClose" type="button" data-i18n="tasks.planner.close">Close</button>
+      </div>
+    </div>
+
+    <div class="insights-overlay" id="insightsDialog" role="dialog" aria-modal="true" aria-labelledby="insightsTitle">
+      <div class="insights-panel">
+        <span class="eyebrow" data-i18n="insights.eyebrow">Time insights</span>
+        <h2 id="insightsTitle" data-i18n="insights.title">Estimate and projects</h2>
+        <div class="insights-section">
+          <div class="insights-heading"><b data-i18n="insights.estimate.title">Estimate vs actual</b><span id="insightBiasSummary"></span></div>
+          <div class="insight-list" id="insightBiasList"></div>
+        </div>
+        <div class="insights-section">
+          <div class="insights-heading"><b data-i18n="insights.projects.title">Project time</b><span data-i18n="insights.projects.period">This month</span></div>
+          <div class="project-bars" id="projectStatsList"></div>
+        </div>
+        <button class="secondary-button insights-close" id="btnInsightsClose" type="button" data-i18n="insights.close">Close</button>
+      </div>
+    </div>
+
     <div class="confirm-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="confirm-panel">
         <span class="eyebrow" data-i18n="common.confirmEyebrow">Please confirm</span>
@@ -438,6 +540,7 @@
   <script src="js/app.js"></script>
   <script src="js/views/home.js"></script>
   <script src="js/views/record.js"></script>
+  <script src="js/views/tasks.js"></script>
   <script src="js/views/today.js"></script>
   <script src="js/views/settings.js"></script>
   <script src="js/views/history.js"></script>

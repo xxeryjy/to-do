@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.1-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,9 +24,9 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [下载 v0.5.1 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.5.1/DesktopTODO-Setup-0.5.1.exe)
-- [下载 v0.5.1 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.5.1/DesktopTODO-0.5.1-portable.exe)
-- [查看 v0.5.1 全部发布文件](https://github.com/xxeryjy/to-do/releases/tag/v0.5.1)
+- [下载 v0.6.0 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.6.0/DesktopTODO-Setup-0.6.0.exe)
+- [下载 v0.6.0 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.6.0/DesktopTODO-0.6.0-portable.exe)
+- [查看 v0.6.0 全部发布文件](https://github.com/xxeryjy/to-do/releases/tag/v0.6.0)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -40,6 +40,11 @@
 - `25 / 30 / 45 / 60` 分钟快速预设
 - 工作时长、短休息、长休息、长休频率和延时时长配置
 - 专注结束后填写记录、选择快捷标签
+- 今日扁平任务清单，支持从任务直接开始专注
+- 任务显示累计专注时长，完成后仍保留历史记录
+- 可选任务项目与预估时长
+- 拖拽任务到 09:00–18:00 时间轴进行一天排期
+- 历史页时间洞察：预估与实际偏差、本月项目投入
 - 手动添加记录与编辑已有记录
 - 今日数据概览、最近记录和邮件发送
 - 按关键词、日期范围搜索历史记录
@@ -56,6 +61,12 @@
   - 无记录日期自动跳过
   - 应用错过发送时间后，下次启动补发上一自然日汇总
   - 发送失败后下次启动重试
+- 每周自动发送最近 7 天总结，可选星期与时间
+- 专注结束后生成可编辑记录草稿
+- 根据任务自动带出标签与项目
+- 可选自动启动用户配置的本地工作软件
+- Windows 勿扰模式不可用时给出系统设置提示
+- 支持应用内与全局自动化快捷键
 - 暗黑青绿、糖果风格和浅色工作台三种 UI，可即时切换并持久化
 - 主窗口、挂件、Toast、确认弹窗和记录页面同步主题
 - 可拖动无边框窗口与左侧导航浅色主题
@@ -107,7 +118,7 @@ npm run dev
 npm test
 ```
 
-测试覆盖原生模块加载、计时状态机、专注与休息延长流程、提前结束、主要进程模块、自动邮件调度、更新版本判断和渲染层语法。
+测试覆盖原生模块加载、计时状态机、专注与休息延长、提前结束、任务与项目关联、每日/每周邮件调度、更新版本判断和渲染层语法。
 
 ## 打包
 
@@ -118,8 +129,8 @@ npm run dist
 Windows 构建输出：
 
 ```text
-out/DesktopTODO-Setup-0.5.1.exe
-out/DesktopTODO-0.5.1-portable.exe
+out/DesktopTODO-Setup-0.6.0.exe
+out/DesktopTODO-0.6.0-portable.exe
 ```
 
 ## 应用更新
@@ -140,7 +151,7 @@ out/DesktopTODO-0.5.1-portable.exe
 
 仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建安装版和便携版、生成更新元数据、差分补丁及 `.sha256` 文件，并创建 GitHub Release。
 
-从旧版便携 EXE 迁移到安装版仍需手动安装一次；从 `v0.5.0` 起，安装版可使用差量自动更新。`v0.5.1` 通过同一流程发布。
+从旧版便携 EXE 迁移到安装版仍需手动安装一次；从 `v0.5.0` 起，安装版可使用差量自动更新。`v0.6.0` 通过同一流程发布。
 
 ## QQ 邮箱配置
 
@@ -150,6 +161,7 @@ out/DesktopTODO-0.5.1-portable.exe
 2. 打开应用设置页，填写 QQ 邮箱地址和 SMTP 授权码。
 3. 保存后可在今日记录页手动发送汇总。
 4. 如需自动发送，开启“每日自动发送”并选择时间。
+5. 如需每周汇总，开启“每周邮件总结”并选择星期与时间。
 
 授权码通过 Electron `safeStorage` 加密后保存在本地。若系统不支持安全存储，则回退为本地明文存储。
 
@@ -184,6 +196,8 @@ out/DesktopTODO-0.5.1-portable.exe
 - 使用本地 SQLite，不包含账号、云同步或多设备同步。
 - 计时的内存状态不会在应用崩溃后恢复。
 - 开机启动按当前可执行文件路径写入；便携版移动目录后可能需要在设置中重新开启。
+- GitHub、Jira、Notion、Todoist 和日历真实同步仍需要各平台 OAuth 应用配置，目前仅提供适配入口。
+- Windows 没有稳定公开的勿扰模式控制接口，自动化只提供降级提示。
 - 自动邮件只在应用运行时发送；错过后会在下次启动补发上一自然日记录。
 - 安装版自动更新依赖公开 GitHub Releases、`latest.yml` 和差量块文件；便携版更新依赖版本标签与 SHA256 校验文件。
 - 从旧版便携 EXE 迁移到安装版需要手动安装一次。

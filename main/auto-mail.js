@@ -40,6 +40,28 @@ function isAtOrAfterSchedule(now, timeValue) {
     || (now.getHours() === time.hours && now.getMinutes() >= time.minutes)
 }
 
+function startOfWeekKey(date = new Date()) {
+  const monday = new Date(date)
+  const offset = (monday.getDay() + 6) % 7
+  monday.setDate(monday.getDate() - offset)
+  monday.setHours(0, 0, 0, 0)
+  return formatDateKey(monday)
+}
+
+function weeklyTargetDate(now, dayValue, timeValue) {
+  const day = Math.max(0, Math.min(6, parseInt(dayValue, 10) || 0))
+  const time = parseTime(timeValue)
+  if (!time) return null
+  const monday = new Date(now)
+  const offset = (monday.getDay() + 6) % 7
+  monday.setDate(monday.getDate() - offset)
+  monday.setHours(0, 0, 0, 0)
+  const target = new Date(monday)
+  target.setDate(monday.getDate() + (day === 0 ? 6 : day - 1))
+  target.setHours(time.hours, time.minutes, 0, 0)
+  return target
+}
+
 class AutoMailScheduler extends EventEmitter {
   constructor({ db: database = db, mailer: mailService = mailer } = {}) {
     super()
@@ -49,6 +71,7 @@ class AutoMailScheduler extends EventEmitter {
     this.startupTimer = null
     this.checking = false
     this.attemptedDates = new Set()
+    this.attemptedWeeks = new Set()
     this.currentDay = formatDateKey(new Date())
   }
 
@@ -79,24 +102,30 @@ class AutoMailScheduler extends EventEmitter {
   async check({ startup = false } = {}) {
     if (this.checking) return
     const settings = this.db.getAllSettings()
-    if (settings.daily_mail_enabled !== '1') return
-    if (!parseTime(settings.daily_mail_time)) return
+    const dailyEnabled = settings.daily_mail_enabled === '1' && !!parseTime(settings.daily_mail_time)
+    const weeklyEnabled = settings.weekly_mail_enabled === '1' && !!weeklyTargetDate(new Date(), settings.weekly_mail_day, settings.weekly_mail_time)
+    if (!dailyEnabled && !weeklyEnabled) return
 
     this.checking = true
     try {
       const now = new Date()
       const today = formatDateKey(now)
 
-      if (startup) {
-        await this.processDate(previousDateKey(now), settings)
-      } else if (today !== this.currentDay) {
-        // 应用跨天运行时，补处理刚刚结束的上一自然日。
-        await this.processDate(previousDateKey(now), settings)
+      if (dailyEnabled) {
+        if (startup) {
+          await this.processDate(previousDateKey(now), settings)
+        } else if (today !== this.currentDay) {
+          // 应用跨天运行时，补处理刚刚结束的上一自然日。
+          await this.processDate(previousDateKey(now), settings)
+        }
+        if (isAtOrAfterSchedule(now, settings.daily_mail_time)) {
+          await this.processDate(today, settings)
+        }
       }
       this.currentDay = today
 
-      if (isAtOrAfterSchedule(now, settings.daily_mail_time)) {
-        await this.processDate(today, settings)
+      if (weeklyEnabled) {
+        await this.processWeekly(now, settings)
       }
     } finally {
       this.checking = false
@@ -138,6 +167,34 @@ class AutoMailScheduler extends EventEmitter {
     this.recordError(new Error(result.error || i18n.t(language, 'mail.autoFailed')), dateKey)
   }
 
+  async processWeekly(now, settings) {
+    const target = weeklyTargetDate(now, settings.weekly_mail_day, settings.weekly_mail_time)
+    if (!target || now < target) return
+    const weekKey = startOfWeekKey(now)
+    if (this.attemptedWeeks.has(weekKey)) return
+    if (this.db.getSetting('weekly_mail_last_success_week', '') === weekKey) return
+    if (this.db.getSetting('weekly_mail_last_skip_week', '') === weekKey) return
+
+    this.attemptedWeeks.add(weekKey)
+    const result = await this.mailer.sendWeeklyEmail(now)
+    if (result.ok) {
+      this.db.setSetting('weekly_mail_last_success_week', weekKey)
+      this.db.setSetting('weekly_mail_last_error', '')
+      this.emit('status', { type: 'weekly-success', week: weekKey })
+      return
+    }
+    if (result.skipped) {
+      this.db.setSetting('weekly_mail_last_skip_week', weekKey)
+      this.db.setSetting('weekly_mail_last_error', '')
+      this.emit('status', { type: 'weekly-skipped', week: weekKey })
+      return
+    }
+    const language = this.db.getSetting('language', 'en')
+    const message = result.error || i18n.t(language, 'mail.autoFailed')
+    this.db.setSetting('weekly_mail_last_error', message)
+    this.emit('status', { type: 'weekly-error', week: weekKey, error: message })
+  }
+
   recordError(error, dateKey = formatDateKey(new Date())) {
     const message = error && error.message ? error.message : String(error)
     this.db.setSetting('daily_mail_last_error', message)
@@ -151,7 +208,12 @@ class AutoMailScheduler extends EventEmitter {
       time: settings.daily_mail_time || '18:00',
       lastSuccessDate: settings.daily_mail_last_success_date || '',
       lastSkipDate: settings.daily_mail_last_skip_date || '',
-      lastError: settings.daily_mail_last_error || ''
+      lastError: settings.daily_mail_last_error || '',
+      weeklyEnabled: settings.weekly_mail_enabled === '1',
+      weeklyDay: settings.weekly_mail_day || '5',
+      weeklyTime: settings.weekly_mail_time || '18:30',
+      weeklyLastSuccessWeek: settings.weekly_mail_last_success_week || '',
+      weeklyLastError: settings.weekly_mail_last_error || ''
     }
   }
 }
@@ -163,3 +225,5 @@ module.exports.formatDateKey = formatDateKey
 module.exports.previousDateKey = previousDateKey
 module.exports.parseTime = parseTime
 module.exports.isAtOrAfterSchedule = isAtOrAfterSchedule
+module.exports.startOfWeekKey = startOfWeekKey
+module.exports.weeklyTargetDate = weeklyTargetDate

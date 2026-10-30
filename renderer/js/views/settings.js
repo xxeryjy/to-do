@@ -43,6 +43,29 @@
     })
   }
 
+  async function renderIntegrations() {
+    const box = $('integrationList')
+    if (!box || !window.todo.integrationsList) return
+    const providers = await window.todo.integrationsList()
+    box.innerHTML = ''
+    for (const provider of providers) {
+      const row = document.createElement('div')
+      row.className = 'integration-row'
+      const copy = document.createElement('div')
+      copy.className = 'integration-copy'
+      const name = document.createElement('b')
+      name.textContent = provider.name
+      const hint = document.createElement('span')
+      hint.textContent = window.I18n.t('settings.integrations.oauthRequired')
+      copy.append(name, hint)
+      const status = document.createElement('span')
+      status.className = 'integration-status'
+      status.textContent = window.I18n.t('settings.integrations.notConfigured')
+      row.append(copy, status)
+      box.appendChild(row)
+    }
+  }
+
   function render() {
     const settings = window.Store.settings
     const email = settings.qq_email || ''
@@ -60,12 +83,25 @@
       button.classList.toggle('active', button.dataset.language === (settings.language || 'en'))
     })
     renderThemeSelection()
+    renderIntegrations().catch(() => {})
 
     $('setWidgetPlay').checked = settings.widget_show_play === '1'
     $('setWidgetTime').checked = settings.widget_show_time === '1'
     $('setLaunchAtLogin').checked = settings.launch_at_login === '1'
     $('setNotifications').checked = settings.notifications_enabled === '1'
     $('setNotificationSound').checked = settings.notification_sound_enabled === '1'
+    $('setAutomationDraft').checked = settings.automation_draft_enabled === '1'
+    $('setAutomationMapping').checked = settings.automation_task_mapping_enabled === '1'
+    $('setFocusScene').checked = settings.focus_scene_enabled === '1'
+    $('setFocusDnd').checked = settings.focus_scene_dnd_enabled === '1'
+    $('setLaunchApps').checked = settings.focus_launch_apps_enabled === '1'
+    $('setShortcutsEnabled').checked = settings.shortcuts_enabled === '1'
+    let appPaths = []
+    try { appPaths = JSON.parse(settings.focus_launch_apps || '[]') } catch (_error) {}
+    $('focusLaunchApps').value = Array.isArray(appPaths) ? appPaths.join('\n') : ''
+    $('setWeeklyMail').checked = settings.weekly_mail_enabled === '1'
+    $('setWeeklyMailDay').value = settings.weekly_mail_day || '5'
+    $('setWeeklyMailTime').value = settings.weekly_mail_time || '18:30'
     $('setAutoMail').checked = settings.daily_mail_enabled === '1'
     $('setAutoMailTime').value = settings.daily_mail_time || '18:00'
     refreshAutoHint()
@@ -127,6 +163,16 @@
       launchAtLogin: $('setLaunchAtLogin').checked,
       notifications: $('setNotifications').checked,
       notificationSound: $('setNotificationSound').checked,
+      automationDraft: $('setAutomationDraft').checked,
+      automationMapping: $('setAutomationMapping').checked,
+      focusScene: $('setFocusScene').checked,
+      focusDnd: $('setFocusDnd').checked,
+      launchApps: $('setLaunchApps').checked,
+      shortcutsEnabled: $('setShortcutsEnabled').checked,
+      focusLaunchApps: $('focusLaunchApps').value,
+      weeklyMail: $('setWeeklyMail').checked,
+      weeklyMailDay: $('setWeeklyMailDay').value,
+      weeklyMailTime: $('setWeeklyMailTime').value,
       autoMail: $('setAutoMail').checked,
       autoMailTime: $('setAutoMailTime').value,
       uiStyle: window.Store.settings.ui_style || 'dark'
@@ -141,6 +187,16 @@
     $('setLaunchAtLogin').checked = draft.launchAtLogin
     $('setNotifications').checked = draft.notifications
     $('setNotificationSound').checked = draft.notificationSound
+    $('setAutomationDraft').checked = draft.automationDraft
+    $('setAutomationMapping').checked = draft.automationMapping
+    $('setFocusScene').checked = draft.focusScene
+    $('setFocusDnd').checked = draft.focusDnd
+    $('setLaunchApps').checked = draft.launchApps
+    $('setShortcutsEnabled').checked = draft.shortcutsEnabled
+    $('focusLaunchApps').value = draft.focusLaunchApps
+    $('setWeeklyMail').checked = draft.weeklyMail
+    $('setWeeklyMailDay').value = draft.weeklyMailDay
+    $('setWeeklyMailTime').value = draft.weeklyMailTime
     $('setAutoMail').checked = draft.autoMail
     $('setAutoMailTime').value = draft.autoMailTime
     window.Store.settings.ui_style = draft.uiStyle
@@ -180,6 +236,16 @@
       launch_at_login: $('setLaunchAtLogin').checked ? '1' : '0',
       notifications_enabled: $('setNotifications').checked ? '1' : '0',
       notification_sound_enabled: $('setNotificationSound').checked ? '1' : '0',
+      automation_draft_enabled: $('setAutomationDraft').checked ? '1' : '0',
+      automation_task_mapping_enabled: $('setAutomationMapping').checked ? '1' : '0',
+      focus_scene_enabled: $('setFocusScene').checked ? '1' : '0',
+      focus_scene_dnd_enabled: $('setFocusDnd').checked ? '1' : '0',
+      focus_launch_apps_enabled: $('setLaunchApps').checked ? '1' : '0',
+      focus_launch_apps: JSON.stringify($('focusLaunchApps').value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)),
+      shortcuts_enabled: $('setShortcutsEnabled').checked ? '1' : '0',
+      weekly_mail_enabled: $('setWeeklyMail').checked ? '1' : '0',
+      weekly_mail_day: $('setWeeklyMailDay').value || '5',
+      weekly_mail_time: $('setWeeklyMailTime').value || '18:30',
       daily_mail_time: autoTime || '18:00',
       daily_mail_enabled: autoEnabled ? '1' : '0',
       language: window.Store.settings.language || 'en',

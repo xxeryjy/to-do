@@ -10,6 +10,9 @@ const autoMail = require('./auto-mail')
 const secret = require('./secret')
 const updater = require('./updater')
 const notifications = require('./notifications')
+const integrations = require('./integrations')
+const automation = require('./automation')
+const shortcuts = require('./shortcuts')
 
 /**
  * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function, prepareForUpdate: Function}} deps 主进程依赖
@@ -22,9 +25,19 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     return timer.snapshot()
   })
 
-  ipcMain.handle('timer:start', (_e, { minutes } = {}) => {
-    timer.startFocus(minutes)
-    return timer.snapshot()
+  ipcMain.handle('timer:start', async (_e, { minutes, taskId, taskTitle, taskProject } = {}) => {
+    const wasIdle = timer.stage === 'idle'
+    timer.startFocus(minutes, taskId, taskTitle, taskProject)
+    const state = timer.snapshot()
+    if (wasIdle) {
+      const scene = await automation.applyFocusScene(db.getAllSettings())
+      if (scene.enabled) {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) win.webContents.send('automation:focus-scene', scene)
+        }
+      }
+    }
+    return state
   })
 
   ipcMain.handle('timer:pause', () => {
@@ -88,7 +101,8 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
       endedAt: Date.now(),
       durationMin: payload.durationMin,
       content: payload.content,
-      tag: payload.tag
+      tag: payload.tag,
+      taskId: payload.taskId
     })
     // 保存后自动进入休息
     timer.startBreak()
@@ -146,6 +160,33 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     return db.searchSessions(kw, range)
   })
 
+  /* ---------- 任务 ---------- */
+
+  ipcMain.handle('task:list', () => db.getTodayTasks())
+
+  ipcMain.handle('task:create', (_e, { title, project, estimateMin } = {}) => {
+    return db.createTask({ title, project, estimateMin })
+  })
+
+  ipcMain.handle('task:complete', (_e, { id, completed } = {}) => {
+    return db.setTaskCompleted(id, !!completed)
+  })
+
+  ipcMain.handle('task:schedule', (_e, { id, scheduledStart, scheduledEnd } = {}) => {
+    return db.setTaskSchedule(id, scheduledStart, scheduledEnd)
+  })
+
+  ipcMain.handle('task:stats', () => ({
+    projects: db.getProjectStats(),
+    estimateBias: db.getEstimateBias()
+  }))
+
+  ipcMain.handle('integrations:list', () => integrations.listProviders())
+
+  ipcMain.handle('integrations:connect', (_e, { providerId } = {}) => {
+    return integrations.connectProvider(providerId)
+  })
+
   /* ---------- 设置 ---------- */
 
   ipcMain.handle('settings:get', () => {
@@ -179,7 +220,8 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     if (keys.includes('language') && refreshTrayLanguage) {
       refreshTrayLanguage()
     }
-    if (keys.some((key) => ['daily_mail_enabled', 'daily_mail_time'].includes(key))) {
+    if (keys.includes('shortcuts_enabled')) shortcuts.init()
+    if (keys.some((key) => ['daily_mail_enabled', 'daily_mail_time', 'weekly_mail_enabled', 'weekly_mail_day', 'weekly_mail_time'].includes(key))) {
       autoMail.refresh()
     }
 
@@ -294,11 +336,11 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     notifyTimerCompletion('focus')
   })
 
-  timer.on('focusFinished', ({ startedAt }) => {
+  timer.on('focusFinished', (payload) => {
     // 计时结束：唤起主窗口进入记录填写，挂件收到同一事件
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
-        win.webContents.send('timer:focus-finished', { startedAt })
+        win.webContents.send('timer:focus-finished', payload)
       }
     }
     showMainWindow()

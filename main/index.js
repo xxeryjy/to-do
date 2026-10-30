@@ -16,6 +16,7 @@ const timer = require('./timer')
 const db = require('./db')
 const autoMail = require('./auto-mail')
 const i18n = require('./i18n')
+const shortcuts = require('./shortcuts')
 
 // 开发模式（npm run dev）：跳过单实例锁，允许与已运行的便携版共存
 const isDev = process.argv.includes('--dev')
@@ -223,6 +224,7 @@ app.whenReady().then(() => {
   createMainWindow()
   createWidgetWindow()
   createTray()
+  shortcuts.init()
   autoMail.start()
 
   app.on('activate', () => {
@@ -241,6 +243,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   autoMail.stop()
+  shortcuts.stop()
 })
 
 // 暴露给 IPC 层使用的辅助函数
