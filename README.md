@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.1-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,9 +24,9 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [下载 v0.5.0 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-Setup-0.5.0.exe)
-- [下载 v0.5.0 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-0.5.0-portable.exe)
-- [下载 v0.5.0 便携版 SHA256](https://github.com/xxeryjy/to-do/releases/download/v0.5.0/DesktopTODO-0.5.0-portable.exe.sha256)
+- [下载 v0.5.1 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.5.1/DesktopTODO-Setup-0.5.1.exe)
+- [下载 v0.5.1 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.5.1/DesktopTODO-0.5.1-portable.exe)
+- [查看 v0.5.1 全部发布文件](https://github.com/xxeryjy/to-do/releases/tag/v0.5.1)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -34,6 +34,8 @@
 
 - 专注、暂停、继续、结束与休息倒计时
 - 专注到点后内联询问是否疲劳，可直接休息或延长当前专注
+- 休息到点后询问是否继续休息，可按设置时长多次延长
+- 原始休息与所有延长时间合并为同一条休息记录
 - 提前结束专注或休息时，按实际已进行时长进入记录页
 - `25 / 30 / 45 / 60` 分钟快速预设
 - 工作时长、短休息、长休息、长休频率和延时时长配置
@@ -42,7 +44,10 @@
 - 今日数据概览、最近记录和邮件发送
 - 按关键词、日期范围搜索历史记录
 - 桌面置顶挂件，与主窗口实时同步
-- 最小化或隐藏到托盘时，通过 Windows 系统通知和提示音提醒计时结束
+- 最小化或隐藏到托盘后继续计时，通过系统通知和提示音提醒计时结束
+- 系统通知与提示音可分别开关
+- 所有页面提供最小化与关闭按钮，关闭按钮仅隐藏到托盘，不结束进程
+- 设置页提供开机启动开关，默认关闭
 - 完整中英文界面切换，默认英文
 - 基于 GitHub Releases 的安装版差量自动更新
 - 便携版自动更新，支持完整包与 zstd 差分补丁回退
@@ -51,7 +56,9 @@
   - 无记录日期自动跳过
   - 应用错过发送时间后，下次启动补发上一自然日汇总
   - 发送失败后下次启动重试
-- 暗黑青绿色主题与可拖动无边框窗口
+- 暗黑青绿、糖果风格和浅色工作台三种 UI，可即时切换并持久化
+- 主窗口、挂件、Toast、确认弹窗和记录页面同步主题
+- 可拖动无边框窗口与左侧导航浅色主题
 
 ## 界面预览
 
@@ -100,7 +107,7 @@ npm run dev
 npm test
 ```
 
-测试覆盖原生模块加载、计时状态机、提前结束与延长流程、主要进程模块、自动邮件调度、更新版本判断和渲染层语法。
+测试覆盖原生模块加载、计时状态机、专注与休息延长流程、提前结束、主要进程模块、自动邮件调度、更新版本判断和渲染层语法。
 
 ## 打包
 
@@ -111,8 +118,8 @@ npm run dist
 Windows 构建输出：
 
 ```text
-out/DesktopTODO-Setup-0.5.0.exe
-out/DesktopTODO-0.5.0-portable.exe
+out/DesktopTODO-Setup-0.5.1.exe
+out/DesktopTODO-0.5.1-portable.exe
 ```
 
 ## 应用更新
@@ -133,7 +140,7 @@ out/DesktopTODO-0.5.0-portable.exe
 
 仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建安装版和便携版、生成更新元数据、差分补丁及 `.sha256` 文件，并创建 GitHub Release。
 
-由于旧版便携 EXE 无法自动切换到安装版，首次迁移到 `v0.5.0` 需要手动下载一次安装包；之后即可使用小体积差量更新。
+从旧版便携 EXE 迁移到安装版仍需手动安装一次；从 `v0.5.0` 起，安装版可使用差量自动更新。`v0.5.1` 通过同一流程发布。
 
 ## QQ 邮箱配置
 
@@ -176,6 +183,7 @@ out/DesktopTODO-0.5.0-portable.exe
 - 当前仅提供 Windows 打包配置。
 - 使用本地 SQLite，不包含账号、云同步或多设备同步。
 - 计时的内存状态不会在应用崩溃后恢复。
+- 开机启动按当前可执行文件路径写入；便携版移动目录后可能需要在设置中重新开启。
 - 自动邮件只在应用运行时发送；错过后会在下次启动补发上一自然日记录。
 - 安装版自动更新依赖公开 GitHub Releases、`latest.yml` 和差量块文件；便携版更新依赖版本标签与 SHA256 校验文件。
 - 从旧版便携 EXE 迁移到安装版需要手动安装一次。
