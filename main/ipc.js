@@ -15,9 +15,9 @@ const automation = require('./automation')
 const shortcuts = require('./shortcuts')
 
 /**
- * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function, prepareForUpdate: Function}} deps 主进程依赖
+ * @param {{showMainWindow: Function, minimizeToTray: Function, refreshTrayLanguage: Function, quitForUpdate: Function, prepareForUpdate: Function, getMainWindow: Function}} deps 主进程依赖
  */
-function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate }) {
+function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate, getMainWindow }) {
   /* ---------- 计时器 ---------- */
 
   ipcMain.handle('timer:set-duration', (_e, { minutes } = {}) => {
@@ -172,6 +172,14 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     return db.setTaskCompleted(id, !!completed)
   })
 
+  ipcMain.handle('task:update', (_e, { id, title, project, estimateMin } = {}) => {
+    return db.updateTaskDetails(id, { title, project, estimateMin })
+  })
+
+  ipcMain.handle('task:delete', (_e, { id } = {}) => {
+    return { ok: db.deleteTask(id) }
+  })
+
   ipcMain.handle('task:schedule', (_e, { id, scheduledStart, scheduledEnd } = {}) => {
     return db.setTaskSchedule(id, scheduledStart, scheduledEnd)
   })
@@ -317,7 +325,46 @@ function registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quit
     notifications.showTimerNotification(kind, { onClick: showMainWindow })
   }
 
+  /* ---------- 到点强制提醒（置顶弹窗，确认前不可 dismiss） ---------- */
+
+  let completionAlertActive = false
+
+  /** 到点：主窗口强制置顶 + 聚焦 + 任务栏闪烁，直到用户做出选择 */
+  const raiseCompletionAlert = () => {
+    showMainWindow()
+    const win = getMainWindow()
+    if (!win || win.isDestroyed()) return
+    win.setAlwaysOnTop(true, 'screen-saver')
+    win.moveTop()
+    win.flashFrame(true)
+    // 获得焦点后停止任务栏闪烁
+    win.once('focus', () => {
+      if (!win.isDestroyed()) win.flashFrame(false)
+    })
+  }
+
+  /** 进入「等待选择」状态即强制置顶；做出选择后解除置顶 */
+  const syncCompletionAlert = (state) => {
+    const pending = !!(state && (state.awaitingFocusChoice || state.awaitingBreakChoice))
+    if (pending) {
+      if (!completionAlertActive) {
+        completionAlertActive = true
+        raiseCompletionAlert()
+      }
+      return
+    }
+    if (completionAlertActive) {
+      completionAlertActive = false
+      const win = getMainWindow()
+      if (win && !win.isDestroyed()) {
+        win.setAlwaysOnTop(false)
+        win.flashFrame(false)
+      }
+    }
+  }
+
   timer.on('state', broadcast)
+  timer.on('state', syncCompletionAlert)
   updater.on('status', (payload) => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {

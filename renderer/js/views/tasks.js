@@ -5,6 +5,7 @@
 ;(function () {
   const $ = (id) => document.getElementById(id)
   let tasks = []
+  let editingTaskId = null
 
   function currentTimer() {
     return window.Store.timer || { stage: 'idle', taskId: null }
@@ -74,7 +75,20 @@
       start.title = window.I18n.t(active ? 'tasks.active' : 'tasks.start')
       start.disabled = done || timer.stage !== 'idle'
 
-      item.append(check, copy, start)
+      const edit = document.createElement('button')
+      edit.type = 'button'
+      edit.className = 'task-edit'
+      edit.dataset.action = 'edit'
+      edit.dataset.id = task.id
+      edit.textContent = '✎'
+      edit.title = window.I18n.t('tasks.edit')
+      edit.setAttribute('aria-label', window.I18n.t('tasks.edit'))
+      edit.disabled = active
+
+      const actions = document.createElement('div')
+      actions.className = 'task-actions'
+      actions.append(edit, start)
+      item.append(check, copy, actions)
       list.appendChild(item)
     }
   }
@@ -84,16 +98,22 @@
     render()
   }
 
-  function openDialog() {
-    $('taskTitleInput').value = ''
-    $('taskProjectInput').value = ''
-    $('taskEstimateInput').value = ''
+  function openDialog(task = null) {
+    editingTaskId = task ? task.id : null
+    $('taskDialogTitle').textContent = window.I18n.t(task ? 'tasks.dialog.editTitle' : 'tasks.dialog.title')
+    $('taskDialogSubtitle').textContent = window.I18n.t(task ? 'tasks.dialog.editSubtitle' : 'tasks.dialog.subtitle')
+    $('btnTaskCreate').textContent = window.I18n.t(task ? 'tasks.action.saveChanges' : 'tasks.action.add')
+    $('btnTaskDelete').hidden = !task
+    $('taskTitleInput').value = task ? task.title : ''
+    $('taskProjectInput').value = task ? (task.project || '') : ''
+    $('taskEstimateInput').value = task ? (task.estimate_min || '') : ''
     $('taskDialog').classList.add('show')
     $('taskTitleInput').focus()
   }
 
   function closeDialog() {
     $('taskDialog').classList.remove('show')
+    editingTaskId = null
   }
 
   async function createTask(event) {
@@ -106,14 +126,17 @@
     }
     $('btnTaskCreate').disabled = true
     try {
-      await window.todo.taskCreate({
+      const payload = {
         title,
         project: $('taskProjectInput').value.trim(),
         estimateMin: $('taskEstimateInput').value
-      })
+      }
+      if (editingTaskId) await window.todo.taskUpdate(editingTaskId, payload)
+      else await window.todo.taskCreate(payload)
+      const edited = !!editingTaskId
       closeDialog()
       await load()
-      window.App.toast(window.I18n.t('tasks.toast.added'))
+      window.App.toast(window.I18n.t(edited ? 'tasks.toast.updated' : 'tasks.toast.added'))
     } finally {
       $('btnTaskCreate').disabled = false
     }
@@ -129,6 +152,34 @@
     await window.todo.taskComplete(task.id, completed)
     await load()
     window.App.toast(window.I18n.t(completed ? 'tasks.toast.completed' : 'tasks.toast.reopened'))
+  }
+
+  function editTask(task) {
+    if (currentTimer().stage === 'focus' && Number(currentTimer().taskId) === Number(task.id)) {
+      window.App.toast(window.I18n.t('tasks.toast.activeLocked'))
+      return
+    }
+    openDialog(task)
+  }
+
+  async function deleteEditingTask() {
+    const task = tasks.find((item) => Number(item.id) === Number(editingTaskId))
+    if (!task) return
+    if (currentTimer().stage === 'focus' && Number(currentTimer().taskId) === Number(task.id)) {
+      window.App.toast(window.I18n.t('tasks.toast.activeLocked'))
+      return
+    }
+    const confirmed = await window.App.confirm({
+      title: window.I18n.t('tasks.confirm.deleteTitle'),
+      message: window.I18n.t('tasks.confirm.deleteMessage', { title: task.title }),
+      confirmText: window.I18n.t('tasks.action.delete'),
+      cancelText: window.I18n.t('tasks.action.cancel')
+    })
+    if (!confirmed) return
+    await window.todo.taskDelete(task.id)
+    closeDialog()
+    await load()
+    window.App.toast(window.I18n.t('tasks.toast.deleted'))
   }
 
   async function startTask(task) {
@@ -274,7 +325,8 @@
   }
 
   function bind() {
-    $('btnAddTask').addEventListener('click', openDialog)
+    $('btnAddTask').addEventListener('click', () => openDialog())
+    $('btnTaskDelete').addEventListener('click', deleteEditingTask)
     $('btnOpenPlanner').addEventListener('click', openPlanner)
     $('btnOpenInsights').addEventListener('click', openInsights)
     $('btnTaskCancel').addEventListener('click', closeDialog)
@@ -301,6 +353,7 @@
       if (!task) return
       if (button.dataset.action === 'toggle') toggleTask(task)
       if (button.dataset.action === 'start') startTask(task)
+      if (button.dataset.action === 'edit') editTask(task)
     })
 
     window.Store.onChange(() => render())

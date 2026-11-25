@@ -471,7 +471,7 @@
       <form class="task-panel" id="taskForm">
         <span class="eyebrow" data-i18n="tasks.dialog.eyebrow">Small first step</span>
         <h2 id="taskDialogTitle" data-i18n="tasks.dialog.title">New task</h2>
-        <p data-i18n="tasks.dialog.subtitle">Only the task name is needed.</p>
+        <p id="taskDialogSubtitle" data-i18n="tasks.dialog.subtitle">Only the task name is needed.</p>
         <label class="field task-title-field">
           <span data-i18n="tasks.input.label">Task name</span>
           <input id="taskTitleInput" type="text" maxlength="120" data-i18n-placeholder="tasks.input.placeholder" placeholder="What do you want to finish?" autocomplete="off" />
@@ -490,6 +490,7 @@
           <button class="secondary-button" id="btnTaskCancel" type="button" data-i18n="tasks.action.cancel">Cancel</button>
           <button class="primary-button" id="btnTaskCreate" type="submit" data-i18n="tasks.action.add">Add to today</button>
         </div>
+        <button class="text-button task-delete-button" id="btnTaskDelete" type="button" hidden data-i18n="tasks.action.delete">Delete task</button>
       </form>
     </div>
 

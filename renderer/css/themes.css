@@ -55,7 +55,7 @@
 .task-row {
   min-height: 44px;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 32px;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   padding: 7px 8px;
@@ -126,6 +126,29 @@
   background: var(--primary);
   font-size: 10px;
   cursor: pointer;
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.task-edit {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-2);
+  background: var(--panel-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.task-edit:disabled {
+  opacity: .35;
 }
 
 .task-start:disabled {
@@ -202,6 +225,12 @@
 
 .task-form-actions button {
   height: 42px;
+}
+
+.task-delete-button {
+  align-self: center;
+  padding: 4px 8px;
+  color: var(--danger);
 }
 
 :root[data-theme="light"] .task-overlay {
@@ -575,6 +604,69 @@
   color: var(--text);
   font-size: 8px;
   outline: none;
+}
+
+/* 可读性：统一提高任务与辅助信息字号 */
+.section-heading h2 {
+  font-size: 15px;
+}
+
+.text-button {
+  font-size: 11px;
+}
+
+.task-row {
+  min-height: 52px;
+  padding: 8px 9px;
+}
+
+.task-copy b {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.task-copy span {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.task-edit {
+  font-size: 14px;
+}
+
+.task-start {
+  font-size: 12px;
+}
+
+.task-empty {
+  font-size: 11px;
+}
+
+.task-panel > p {
+  font-size: 11px;
+}
+
+.field span,
+.auto-time-row label {
+  font-size: 10px;
+}
+
+.integration-copy b {
+  font-size: 10px;
+}
+
+.integration-copy span,
+.integration-status {
+  font-size: 8px;
+}
+
+.automation-path-card textarea {
+  font-size: 10px;
+}
+
+.weekly-time-row select,
+.weekly-time-row input {
+  font-size: 9px;
 }
 
 .win-close {

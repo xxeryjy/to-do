@@ -397,6 +397,29 @@ function setTaskCompleted(id, completed) {
   return info.changes > 0 ? getTaskById(id) : null
 }
 
+/** 修改任务名称、项目和预估时长 */
+function updateTaskDetails(id, { title, project, estimateMin }) {
+  const value = String(title || '').trim()
+  if (!value) throw new Error('Task title is required')
+  const projectValue = String(project || '').trim() || null
+  const parsedEstimate = parseInt(estimateMin, 10)
+  const estimate = Number.isFinite(parsedEstimate)
+    ? Math.max(1, Math.min(1440, parsedEstimate))
+    : null
+  const info = db.prepare(`
+    UPDATE tasks SET title = ?, project = ?, estimate_min = ? WHERE id = ? AND status <> 'deleted'
+  `).run(value, projectValue, estimate, id)
+  return info.changes > 0 ? getTaskById(id) : null
+}
+
+/** 软删除任务，保留关联的专注记录和项目统计 */
+function deleteTask(id) {
+  const info = db.prepare(`
+    UPDATE tasks SET status = 'deleted', completed_at = NULL WHERE id = ?
+  `).run(id)
+  return info.changes > 0
+}
+
 /** 将任务拖入某一天的某个时间段 */
 function setTaskSchedule(id, scheduledStart, scheduledEnd) {
   const start = scheduledStart ? new Date(scheduledStart) : null
@@ -493,6 +516,8 @@ module.exports = {
   getTaskById,
   getTodayTasks,
   setTaskCompleted,
+  updateTaskDetails,
+  deleteTask,
   setTaskSchedule,
   getProjectStats,
   getEstimateBias,

@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('todo', {
   taskList: () => ipcRenderer.invoke('task:list'),
   taskCreate: (payload) => ipcRenderer.invoke('task:create', typeof payload === 'string' ? { title: payload } : payload),
   taskComplete: (id, completed) => ipcRenderer.invoke('task:complete', { id, completed }),
+  taskUpdate: (id, payload) => ipcRenderer.invoke('task:update', { id, ...payload }),
+  taskDelete: (id) => ipcRenderer.invoke('task:delete', { id }),
   taskSchedule: (id, scheduledStart, scheduledEnd) => ipcRenderer.invoke('task:schedule', { id, scheduledStart, scheduledEnd }),
   taskStats: () => ipcRenderer.invoke('task:stats'),
 

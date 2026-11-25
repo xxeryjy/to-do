@@ -133,7 +133,23 @@ function createMainWindow() {
   mainWin.on('close', (e) => {
     if (!quitting) {
       e.preventDefault()
+      // 计时到点等待选择期间不允许藏到托盘：闪烁任务栏，窗口保持置顶直到确认
+      if (timer.awaitingFocusChoice || timer.awaitingBreakChoice) {
+        if (mainWin.isMinimized()) mainWin.restore()
+        mainWin.show()
+        mainWin.focus()
+        mainWin.flashFrame(true)
+        return
+      }
       minimizeToTray()
+    }
+  })
+
+  // 等待选择期间也不允许最小化，防止提醒被藏掉
+  mainWin.on('minimize', () => {
+    if (!quitting && (timer.awaitingFocusChoice || timer.awaitingBreakChoice)) {
+      mainWin.restore()
+      mainWin.focus()
     }
   })
 
@@ -219,7 +235,7 @@ app.whenReady().then(() => {
   db.init()          // 初始化数据库（建表）
   applyLoginItemSetting()
   timer.init()       // 初始化计时器（加载设置里的时长参数）
-  registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate })
+  registerIpc({ showMainWindow, minimizeToTray, refreshTrayLanguage, quitForUpdate, prepareForUpdate, getMainWindow: () => mainWin })
 
   createMainWindow()
   createWidgetWindow()
