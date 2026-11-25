@@ -2,7 +2,7 @@
 
 > 引擎：SQLite（better-sqlite3，同步 API）
 > 库文件：`app.getPath('userData')/desktop-todo.db`
-> 当前版本：v0.6.0
+> 当前版本：v0.6.1
 > 迁移：启动时创建缺失表，并通过 `PRAGMA table_info` 增量补充字段
 
 ## 1. sessions（工作段/休息记录）

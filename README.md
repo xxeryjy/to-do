@@ -9,7 +9,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white" />
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-14B8A6" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.1-14B8A6" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
@@ -24,9 +24,9 @@
 ## 下载
 
 - [前往 GitHub Releases 下载最新版](https://github.com/xxeryjy/to-do/releases/latest)
-- [下载 v0.6.0 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.6.0/DesktopTODO-Setup-0.6.0.exe)
-- [下载 v0.6.0 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.6.0/DesktopTODO-0.6.0-portable.exe)
-- [查看 v0.6.0 全部发布文件](https://github.com/xxeryjy/to-do/releases/tag/v0.6.0)
+- [下载 v0.6.1 安装版（推荐）](https://github.com/xxeryjy/to-do/releases/download/v0.6.1/DesktopTODO-Setup-0.6.1.exe)
+- [下载 v0.6.1 便携版](https://github.com/xxeryjy/to-do/releases/download/v0.6.1/DesktopTODO-0.6.1-portable.exe)
+- [查看 v0.6.1 全部发布文件](https://github.com/xxeryjy/to-do/releases/tag/v0.6.1)
 
 发布包由 GitHub Actions 自动构建并上传。
 
@@ -129,8 +129,8 @@ npm run dist
 Windows 构建输出：
 
 ```text
-out/DesktopTODO-Setup-0.6.0.exe
-out/DesktopTODO-0.6.0-portable.exe
+out/DesktopTODO-Setup-0.6.1.exe
+out/DesktopTODO-0.6.1-portable.exe
 ```
 
 ## 应用更新
@@ -151,7 +151,7 @@ out/DesktopTODO-0.6.0-portable.exe
 
 仓库包含 `.github/workflows/release.yml`：推送与 `package.json` 版本一致的 `v*` 标签后，会自动构建安装版和便携版、生成更新元数据、差分补丁及 `.sha256` 文件，并创建 GitHub Release。
 
-从旧版便携 EXE 迁移到安装版仍需手动安装一次；从 `v0.5.0` 起，安装版可使用差量自动更新。`v0.6.0` 通过同一流程发布。
+从旧版便携 EXE 迁移到安装版仍需手动安装一次；从 `v0.5.0` 起，安装版可使用差量自动更新。`v0.6.1` 通过同一流程发布。
 
 ## QQ 邮箱配置
 

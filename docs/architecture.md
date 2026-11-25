@@ -1,7 +1,7 @@
 # 桌面 TODO · Electron 架构备忘
 
 > 技术栈：Electron 31 + 原生 HTML/CSS/JS + better-sqlite3 + nodemailer + electron-updater
-> 当前版本：v0.6.0
+> 当前版本：v0.6.1
 
 ## 1. 进程模型
 
